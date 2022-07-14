@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<!--Notice to Bygdrift developer: Create nuget package: dotnet pack-->
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<Version>1.0.3</Version>
+		<Authors>kenboc</Authors>
+		<Company>Bygdrift</Company>
+		<Description>Import or construct, modify, filter and export csv files. Can also import and export from Excel, json, DataTable, stream, string, ExpandoObject.</Description>
+		<Copyright>https://github.com/Bygdrift/CsvTools/blob/master/License.txt</Copyright>
+		<PackageProjectUrl>https://github.com/Bygdrift/CsvTools</PackageProjectUrl>
+		<PackageIcon>icon.png</PackageIcon>
+		<RepositoryUrl>https://github.com/Bygdrift/CsvTools.git</RepositoryUrl>
+		<PackageTags>CSV</PackageTags>
+		<RepositoryType>git</RepositoryType>
+		<NeutralLanguage>en</NeutralLanguage>
+		<PackageId>Bygdrift.Tools.Csv</PackageId>
+		<Product>Bygdrift.Tools.Csv</Product>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<PackageReleaseNotes>
+			Added ability to handle Culture with new Csv().Culture();
+			Better to pinpoint the type of a string date in the CSV. So a column containing ex '2022-11-20' or '20-11-2022' and so on, are now better recognized.
+		</PackageReleaseNotes>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="icon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ClosedXML" Version="0.95.4" />
+		<PackageReference Include="ExcelDataReader" Version="3.6.0" />
+		<PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+	</ItemGroup>
+
+</Project>
