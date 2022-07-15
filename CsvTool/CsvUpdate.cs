@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Bygdrift.Tools.Csv
+namespace Bygdrift.Tools.CsvTool
 {
     /// <summary>
     /// Features to update a CSV with Merge of another csv

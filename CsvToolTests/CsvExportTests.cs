@@ -1,10 +1,10 @@
-﻿using Bygdrift.Tools.Csv;
+﻿using Bygdrift.Tools.CsvTool;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Globalization;
 using System.IO;
 
-namespace CsvTests
+namespace CsvToolTests
 {
     [TestClass]
     public class CsvExportTests

@@ -1,10 +1,10 @@
-﻿using Bygdrift.Tools.Csv.Helpers;
+﻿using Bygdrift.Tools.CsvTool.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace Bygdrift.Tools.Csv
+namespace Bygdrift.Tools.CsvTool
 {
     /// <summary>
     /// Build a csv class

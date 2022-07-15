@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace Bygdrift.Tools.Csv.Helpers
+namespace Bygdrift.Tools.CsvTool.Helpers
 {
     /// <summary>
     /// A class that verifies if a value is a date

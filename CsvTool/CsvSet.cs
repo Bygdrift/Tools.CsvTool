@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Bygdrift.Tools.Csv
+namespace Bygdrift.Tools.CsvTool
 {
     public partial class Csv
     {

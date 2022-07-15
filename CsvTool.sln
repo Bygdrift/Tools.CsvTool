@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31515.178
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Csv", "Csv\Csv.csproj", "{23FA72AD-6806-4D52-9A0C-69E5778AC869}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CsvTool", "CsvTool\CsvTool.csproj", "{23FA72AD-6806-4D52-9A0C-69E5778AC869}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CsvTests", "CsvTests\CsvTests.csproj", "{6E5E8D70-9CD3-474A-83A8-700A58D8449E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CsvToolTests", "CsvToolTests\CsvToolTests.csproj", "{6E5E8D70-9CD3-474A-83A8-700A58D8449E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

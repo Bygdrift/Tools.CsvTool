@@ -1,8 +1,8 @@
-﻿using Bygdrift.Tools.Csv;
+﻿using Bygdrift.Tools.CsvTool;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace CsvTests
+namespace CsvToolTests
 {
     [TestClass]
     public class CsvTests

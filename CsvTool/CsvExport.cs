@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Bygdrift.Tools.Csv
+namespace Bygdrift.Tools.CsvTool
 {
 
     /// <summary>

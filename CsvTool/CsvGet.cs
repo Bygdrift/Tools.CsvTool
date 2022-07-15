@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 
-namespace Bygdrift.Tools.Csv
+namespace Bygdrift.Tools.CsvTool
 {
     public partial class Csv
     {
