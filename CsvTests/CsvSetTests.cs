@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace Tests.CsvTools
+namespace CsvTests
 {
     [TestClass]
     public class CsvSetTests

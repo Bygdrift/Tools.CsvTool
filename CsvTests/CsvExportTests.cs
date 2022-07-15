@@ -4,7 +4,7 @@ using System;
 using System.Globalization;
 using System.IO;
 
-namespace Tests.CsvTools
+namespace CsvTests
 {
     [TestClass]
     public class CsvExportTests

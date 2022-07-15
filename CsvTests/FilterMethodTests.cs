@@ -1,7 +1,7 @@
 ﻿using Bygdrift.Tools.Csv;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Tests.CsvTools
+namespace CsvTests
 {
     [TestClass]
     public class FilterMethodTests

@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Tests.CsvTools
+namespace CsvTests
 {
     [TestClass]
     public class CsvImportTests

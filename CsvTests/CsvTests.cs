@@ -2,7 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace Tests.CsvTools
+namespace CsvTests
 {
     [TestClass]
     public class CsvTests
