@@ -40,6 +40,9 @@ namespace Bygdrift.Tools.CsvTool
             if (_colLimit.Max < col || _colLimit.Max == null)
                 _colLimit.Max = col;
 
+            if (!ColMaxLengths.ContainsKey(col))
+                ColMaxLengths.Add(col, 0);
+
             return this;
         }
 

@@ -68,6 +68,31 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
+        /// Export to a csv string
+        /// </summary>
+        /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
+        public string ToCsvString(int? take = null)
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
+            var writer = new StringBuilder();
+            if (this != null || !Records.Any())
+            {
+                writer.Append(WriteRow(null).StringBuilder).Append("\n");  //Header
+                for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
+                {
+                    if (take != null && row == take)
+                        break;
+
+                    var res2 = WriteRow(row);
+                    if (!res2.IsEmpy)
+                        writer.Append(res2.StringBuilder).Append("\n");
+
+                }
+            }
+            return writer.ToString();
+        }
+
+        /// <summary>
         /// Exports to a data table
         /// </summary>
         /// <param name="take"></param>
@@ -224,11 +249,11 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
-        /// Exports data as an ExandoList
+        /// Exports data as an ExpandoList
         /// </summary>
         public IEnumerable<Dictionary<string, object>> ToExpandoList()
         {
-            var list = new List<Dictionary<string, object>>();
+            var res = new List<Dictionary<string, object>>();
             for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
             {
                 var isEmpty = true;
@@ -242,9 +267,9 @@ namespace Bygdrift.Tools.CsvTool
                 }
 
                 if (!isEmpty)
-                    list.Add(dict);
+                    res.Add(dict);
             }
-            return list;
+            return res;
         }
 
         /// <param name="row">If r is null, it is a header. Else it is a normal row</param>

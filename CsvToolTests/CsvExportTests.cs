@@ -45,6 +45,14 @@ namespace CsvToolTests
         }
 
         [TestMethod]
+        public void ToCsvString()
+        {
+            var csv = new Csv("Id, Age").AddRow(1, 5.2).AddRow(2, 8);
+            var res = csv.ToCsvString();
+            Assert.AreEqual(res, "Id,Age\n1,5.2\n2,8\n");
+        }
+
+        [TestMethod]
         public void ToExcelFile()
         {
             var csv = new Csv("Id, Age").AddRow(1, 5).AddRow(2, 8);

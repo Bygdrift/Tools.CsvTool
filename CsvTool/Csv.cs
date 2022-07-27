@@ -11,11 +11,7 @@ namespace Bygdrift.Tools.CsvTool
     /// </summary>
     public partial class Csv
     {
-        /// <summary>
-        /// A class that verifies if a value is a date. It is possible to replace the predefined date formats, if another culture than the predefined should be used. Dot it by replacing the 
-        /// </summary>
-        public DateChecker DateChecker { get; internal set; } = new();
-
+        
         /// <summary>
         /// Current culture
         /// </summary>
@@ -38,6 +34,11 @@ namespace Bygdrift.Tools.CsvTool
             AddHeaders(headers);
             Culture();
         }
+
+        /// <summary>
+        /// A class that verifies if a value is a date. It is possible to replace the predefined date formats, if another culture than the predefined should be used. Dot it by replacing the 
+        /// </summary>
+        public DateChecker DateChecker { get; internal set; } = new();
 
         /// <summary>
         /// Add another culture. Is by default set to Invariant culture 

@@ -2,19 +2,19 @@
 	<!--Notice to Bygdrift developer: Create nuget package: dotnet pack-->
 	<PropertyGroup>
 		<TargetFramework>net6.0</TargetFramework>
-		<Version>1.0.3</Version>
+		<Version>1.0.4</Version>
 		<Authors>kenboc</Authors>
 		<Company>Bygdrift</Company>
 		<Description>Import or construct, modify, filter and export csv files. Can also import and export from Excel, json, DataTable, stream, string, ExpandoObject.</Description>
-		<Copyright>https://github.com/Bygdrift/Tools.Csv/blob/master/License.md</Copyright>
-		<PackageProjectUrl>https://github.com/Bygdrift/Tools.Csv</PackageProjectUrl>
+		<Copyright>https://github.com/Bygdrift/Tools.CsvTool/blob/master/License.md</Copyright>
+		<PackageProjectUrl>https://github.com/Bygdrift/Tools.CsvTool</PackageProjectUrl>
 		<PackageIcon>icon.png</PackageIcon>
-		<RepositoryUrl>https://github.com/Bygdrift/Tools.Csv.git</RepositoryUrl>
+		<RepositoryUrl>https://github.com/Bygdrift/Tools.CsvTool.git</RepositoryUrl>
 		<PackageTags>CSV</PackageTags>
 		<RepositoryType>git</RepositoryType>
 		<NeutralLanguage>en</NeutralLanguage>
-		<PackageId>Bygdrift.Tools.Csv</PackageId>
-		<Product>Bygdrift.Tools.Csv</Product>
+		<PackageId>Bygdrift.Tools.CsvTool</PackageId>
+		<Product>Bygdrift.Tools.CsvTool</Product>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageReleaseNotes>

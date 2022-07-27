@@ -93,6 +93,20 @@ namespace CsvToolTests
         }
 
         [TestMethod]
+        public void AddEmptyColumn()
+        {
+            var csv = new Csv("A, B");
+            Assert.AreEqual(csv.ColMaxLengths.Count, 2);
+            Assert.AreEqual(csv.RowCount, 0);
+            Assert.AreEqual(csv.ColCount, 2);
+
+            csv.AddRow(1);
+            Assert.AreEqual(csv.ColMaxLengths[1], 1);
+            Assert.AreEqual(csv.ColMaxLengths[2], 0);
+            Assert.AreEqual(csv.RowCount, 1);
+        }
+
+        [TestMethod]
         public void AddRow()
         {
             var csv = new Csv("Number,Text");
@@ -121,8 +135,8 @@ namespace CsvToolTests
         [TestMethod]
         public void AddDecimal()
         {
-            var cultureInfo =  CultureInfo.InvariantCulture;
-            decimal d1 =  1.4M;
+            var cultureInfo = CultureInfo.InvariantCulture;
+            decimal d1 = 1.4M;
             decimal.TryParse(d1.ToString(cultureInfo.NumberFormat), NumberStyles.Any, cultureInfo.NumberFormat, out decimal d1ToStringToDecimal);
             Assert.AreEqual(d1, d1ToStringToDecimal);
 
@@ -135,7 +149,7 @@ namespace CsvToolTests
             csv.AddRecord(1, 3, null);
             Assert.AreEqual(csv.ColTypes[1], typeof(decimal));
             Assert.AreEqual(csv.ColTypes[2], typeof(decimal));
-            Assert.AreEqual(csv.GetRecord(1,1), d1);
+            Assert.AreEqual(csv.GetRecord(1, 1), d1);
             Assert.AreEqual(csv.GetRecord(1, 2), d2AsDecimal);
         }
 
