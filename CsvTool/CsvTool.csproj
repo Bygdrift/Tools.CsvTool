@@ -22,6 +22,7 @@
 			Better to pinpoint the type of a string date in the CSV. So a column containing ex '2022-11-20' or '20-11-2022' and so on, are now better recognized.
 		</PackageReleaseNotes>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<AssemblyName>Bygdrift.Tools.CsvTool</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>
