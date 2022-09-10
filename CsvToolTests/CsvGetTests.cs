@@ -8,11 +8,46 @@ namespace CsvToolTests
     public class CsvGetTests
     {
         [TestMethod]
+        public void GetCsvCopy()
+        {
+            var csv = new Csv("a").AddRows("Empty");
+            var csvCopied = csv.GetCsvCopy();
+            csv.AddRecord(1, 1, "Full");
+            csv.AddHeader("Test");
+            Assert.AreEqual(csvCopied.GetRecord(1, 1), "Empty");
+            Assert.AreEqual(csvCopied.GetHeader("Test").Value, null);
+        }
+
+        [TestMethod]
+        public void GetRecordByHeader()
+        {
+            var csv = CreateCsv();
+            Assert.AreEqual(csv.GetRecord(1, "Type"), "Room");
+            try
+            {
+                Assert.AreEqual(csv.GetRecord(1, "A header the doesn´t exist"), 0);
+                Assert.Fail("No exception thrown");
+            }
+            catch (System.Exception e)
+            {
+                Assert.AreEqual(e.Message, "The headerName 'A header the doesn´t exist' are not in csv");
+            }
+        }
+
+        [TestMethod]
         public void GetRecordColByLookup()
         {
             var csv = CreateCsv();
             var res = csv.GetColRecords("Type", "Mail", "Room", true);
             Assert.IsTrue(res.Count == 3);
+        }
+
+        [TestMethod]
+        public void GetHeadersAsString()
+        {
+            var csv = new Csv().AddHeader(2, "Data").AddHeader(1, "Id");
+            var headers = csv.GetHeadersAsString();
+            Assert.AreEqual(headers, "Id, Data");
         }
 
         [TestMethod]
@@ -41,11 +76,11 @@ namespace CsvToolTests
 
             var res3 = csv.GetRowsRecords("Building", true, null);
             Assert.IsTrue(res3.Count == 8);
-            
+
             var res4 = csv.GetRowsRecords("Capacity", true, 6);
             Assert.IsTrue(res4.Count == 1);
             Assert.IsTrue(res4.First().Value.Count == 7);
-            
+
             var res5 = csv.GetRowsRecords("Capacity", true, null);
             Assert.IsTrue(res5.Count == 7);
         }
@@ -57,6 +92,9 @@ namespace CsvToolTests
             var res = csv.GetRowRecords(1);
             Assert.AreEqual(7, res.Count);
             Assert.AreEqual(6, res[2]);
+
+            var a = csv.GetRecord(1, 3);
+
         }
 
         [TestMethod]
@@ -121,7 +159,7 @@ namespace CsvToolTests
         {
             var csv = new Csv("Mail,Capacity,Location,Level,Building,Name,Type");
             csv.AddRows(new[] {
-                "andegaarden-1.sal@xyz.dk,6,Trollesmindealle 27,1. sal,Rådhus,Andergården,Room",
+                "andegaarden-1.sal@xyz.dk,6,\"Trollesmindealle 27\",1. sal,Rådhus,Andergården,Room",
                 "byraadssalen-moedecenter@xyz.dk,30,Trollesmindealle 27,Stuen,Rådhus,Byrådssalen,Room",
                 "BilABA97100@xyz.dk,,Ukendt,,,Ældre og sundhed - Bil BA 97100,Vehicle",
                 "BocenterMoedelokale3@xyz.dk,3,Ukendt,,,Bocenter - Mødelokale 3,Room",

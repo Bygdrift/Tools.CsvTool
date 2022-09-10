@@ -1,8 +1,6 @@
 ﻿using Bygdrift.Tools.CsvTool;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -20,14 +18,17 @@ namespace CsvToolTests
         {
             var csv = new Csv("a,b,c").AddRows("a,b,c", "A,B,C", "AA, BB, CC");
             var csvIn = new Csv("c,d").AddRows("cNew, dNew", "CNew, DNew");
-            csv.FromCsv(csvIn, false);
-            Assert.IsTrue(csv.ColCount == 4);
-            Assert.IsTrue(csv.RowCount == 5);
+            var csvOut = csv.FromCsv(csvIn, false);
+            Assert.IsTrue(csv.ColCount == 3);
+            Assert.IsTrue(csvOut.ColCount == 4);
+            Assert.IsTrue(csvOut.RowCount == 5);
 
             csv = new Csv("a,b,c").AddRows("a,b,c", "A,B,C", "AA, BB, CC");
-            csv.FromCsv(csvIn, true);
-            Assert.IsTrue(csv.ColCount == 5);
-            Assert.IsTrue(csv.RowCount == 5);
+            csvOut = csv.FromCsv(csvIn, true);
+            Assert.IsTrue(csvOut.ColCount == 5);
+            Assert.IsTrue(csvOut.RowCount == 5);
+
+            csv.FromCsv(null, false);
         }
 
         [TestMethod]
@@ -79,9 +80,9 @@ namespace CsvToolTests
                 var csv = new Csv().FromCsvFile(filePath);
                 Assert.Fail("No exception thrown");
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Assert.AreEqual(ex.Message, "There are linebreaks within two parantheses in the first line in the file and that is an error.");
+                Assert.AreEqual(e.Message, "There are linebreaks within two parantheses in the first line in the file and that is an error.");
             }
         }
 
@@ -93,8 +94,8 @@ namespace CsvToolTests
 
             Assert.AreEqual(csv.Records[(1, 1)].GetType(), typeof(int));
             Assert.AreEqual(csv.ColTypes[1], typeof(int));
-            Assert.AreEqual(csv.Records[(1, 2)].GetType(), typeof(decimal));
-            Assert.AreEqual(csv.ColTypes[2], typeof(decimal));
+            Assert.AreEqual(csv.Records[(1, 2)].GetType(), typeof(double));
+            Assert.AreEqual(csv.ColTypes[2], typeof(double));
             Assert.AreEqual(csv.Records[(1, 3)].GetType(), typeof(long));
             Assert.AreEqual(csv.ColTypes[3], typeof(long));
             Assert.AreEqual(csv.Records[(1, 4)].GetType(), typeof(DateTime));
@@ -117,19 +118,29 @@ namespace CsvToolTests
             var res = new Csv().FromJson("{\"a\":23.9,\"location\":{\"type\":\"Point\",\"coordinates\":[11.266823,55.640562442]},\"motion\":0,\"deviceId\":\"a817e03d633\", \"a\":23.9}", false);
             Assert.AreEqual(res.Headers.Count, 5);
             Assert.AreEqual(res.Records.Count, 5);
-            Assert.AreEqual(res.GetRecord(1,3), "11.266823,  55.640562442");
+            Assert.AreEqual(res.GetRecord(1, 3), "11.266823,  55.640562442");
             Assert.AreEqual(res.Records.Last().Key, (1, 5));
-            Assert.IsTrue(res.RowLimit == (1,1));
+            Assert.IsTrue(res.RowLimit == (1, 1));
 
             var res2 = new Csv().FromJson("[{\"a\":1,\"b\":2},{\"b\":3},{\"a\":4}]", false);
-            Assert.IsTrue(res2.RowLimit == (1,3));
+            Assert.IsTrue(res2.RowLimit == (1, 3));
 
             var res3 = new Csv().AddRecord(1, "id", "0").FromJson("[{\"a\":1,\"b\":2},{\"b\":3},{\"a\":4}]", false);
-            Assert.IsTrue(res3.RowLimit == (1,4));
+            Assert.IsTrue(res3.RowLimit == (1, 4));
 
             var res4 = new Csv().FromJson("[{\"a\":1,\"b\":1,\"location\":{\"type\":\"Point\",\"coordinates\":[11.260,55.640562442]}},{\"b\":1},{\"a\":1}]", false);
-            Assert.IsTrue(res4.RowLimit == (1,3));
+            Assert.IsTrue(res4.RowLimit == (1, 3));
             Assert.AreEqual(res4.Records.Count, 6);
+        }
+
+        [TestMethod]
+        public void FromStreamWithStartingComma()
+        {
+            var csv = "a,b\n,B\n";
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+            var csvFromReader = new Csv().FromCsvStream(stream);
+            var json = csvFromReader.ToJson();
+            Assert.AreEqual(json, "[{\"a\":null,\"b\":\"B\"}]");
         }
 
         [TestMethod]
@@ -152,7 +163,6 @@ namespace CsvToolTests
             csv.AddRecord(1, 1, 1);
             csv.AddRecord(1, 2, "text");
             var stream = csv.ToCsvStream();
-
 
             var csvFromReader = new Csv().FromCsvStream(stream);
             Assert.IsTrue(csvFromReader.ColLimit.Equals((1, 2)));

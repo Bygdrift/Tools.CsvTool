@@ -3,7 +3,6 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,6 +15,8 @@ namespace Bygdrift.Tools.CsvTool
     /// </summary>
     public partial class Csv
     {
+        private Dictionary<int, int> _colMaxLengthsWithHeaders;
+
         /// <summary>
         /// Export to a csv file
         /// </summary>
@@ -26,7 +27,7 @@ namespace Bygdrift.Tools.CsvTool
             if (this == null || !Records.Any())
                 return;
 
-            var stream = ToCsvStream(take);
+            var stream = ToCsvStream(false, take);
 
             var directory = Path.GetDirectoryName(filePath);
             if (!Directory.Exists(directory))
@@ -40,22 +41,24 @@ namespace Bygdrift.Tools.CsvTool
         /// Export to a csv stream
         /// </summary>
         /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
-        public Stream ToCsvStream(int? take = null)
+        /// <param name="addSpaces">Adds spaces for easy reading of output</param>
+        public Stream ToCsvStream(bool addSpaces = false, int? take = null)
         {
-            System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
+            //Denne rammer alt fremover - skal kun være lokal.
+            //System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
 
             var stream = new MemoryStream();
             if (this != null || !Records.Any())
             {
                 using var writer = new StreamWriter(stream, encoding: Encoding.UTF8, leaveOpen: true);
-                writer.WriteLine(WriteRow(null).StringBuilder);  //Header
+                writer.WriteLine(WriteRow(null, addSpaces).StringBuilder);  //Header
 
                 for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
                 {
                     if (take != null && row == take)
                         break;
 
-                    var res = WriteRow(row);
+                    var res = WriteRow(row, addSpaces);
                     if (!res.IsEmpy)
                         writer.WriteLine(res.StringBuilder);
                 }
@@ -70,23 +73,24 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Export to a csv string
         /// </summary>
+        /// <param name="addSpaces">Adds spaces for easy reading of output</param>
         /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
-        public string ToCsvString(int? take = null)
+        public string ToCsvString(bool addSpaces = false, int? take = null)
         {
-            System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
+            //Denne rammer alt fremover - skal kun være lokal.
+            //System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
             var writer = new StringBuilder();
             if (this != null || !Records.Any())
             {
-                writer.Append(WriteRow(null).StringBuilder).Append("\n");  //Header
+                writer.Append(WriteRow(null, addSpaces).StringBuilder).Append("\n");  //Header
                 for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
                 {
                     if (take != null && row == take)
                         break;
 
-                    var res2 = WriteRow(row);
-                    if (!res2.IsEmpy)
-                        writer.Append(res2.StringBuilder).Append("\n");
-
+                    var res = WriteRow(row, addSpaces);
+                    if (!res.IsEmpy)
+                        writer.Append(res.StringBuilder).Append("\n");
                 }
             }
             return writer.ToString();
@@ -173,7 +177,7 @@ namespace Bygdrift.Tools.CsvTool
 
         private XLWorkbook ToExcelAsXlWokBook(string paneName, string tableName = null, int? take = null)
         {
-            System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
+            //System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
             var workbook = new XLWorkbook();
             var worksheet = workbook.Worksheets.Add(paneName);
 
@@ -272,8 +276,28 @@ namespace Bygdrift.Tools.CsvTool
             return res;
         }
 
+        private Dictionary<int, int> colMaxLengthsWithHeaders
+        {
+            get
+            {
+                if (_colMaxLengthsWithHeaders == null)
+                {
+                    _colMaxLengthsWithHeaders = ColMaxLengths;
+                    foreach (var item in ColMaxLengths)
+                    {
+                        var headerLength = Headers[item.Key].Length;
+                        if (headerLength > item.Value)
+                            _colMaxLengthsWithHeaders[item.Key] = headerLength;
+                    }
+                }
+
+                return _colMaxLengthsWithHeaders;
+            }
+        }
+
         /// <param name="row">If r is null, it is a header. Else it is a normal row</param>
-        private (StringBuilder StringBuilder, bool IsEmpy) WriteRow(int? row)
+        /// <param name="addSpaces">Adds spaces for easy reading of output</param>
+        private (StringBuilder StringBuilder, bool IsEmpy) WriteRow(int? row, bool addSpaces)
         {
             //Every record must have same number of lines
             //It is NOT possible to have line breaks within a record by quoting the sentence
@@ -289,7 +313,14 @@ namespace Bygdrift.Tools.CsvTool
             for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
             {
                 string val;
-                if (row != null)
+                if (row == null)  //Is header
+                {
+                    if (Headers.TryGetValue(col, out string headerVal))
+                        val = headerVal.ToString();
+                    else
+                        val = "Col_" + col;
+                }
+                else //Not header
                 {
                     if (Records.TryGetValue(((int)row, col), out object recordVal))
                     {
@@ -298,24 +329,18 @@ namespace Bygdrift.Tools.CsvTool
                         else if (recordVal.GetType() == typeof(DateTime))
                         {
                             isEmpty = false;
-                            val = ((DateTime)recordVal).ToString("s");
+                            val = ((DateTime)recordVal).ToString(Config.DateTimeOutput);
                         }
                         else
                         {
                             isEmpty = false;
-                            val = recordVal != null ? recordVal.ToString().Trim() : string.Empty;
+                            val = recordVal != null ? Convert.ToString(recordVal, Config.CultureInfo.NumberFormat) : string.Empty;
                         }
                     }
                     else
                         val = string.Empty;
                 }
-                else
-                {
-                    if (Headers.TryGetValue(col, out string headerVal))
-                        val = headerVal.ToString();
-                    else
-                        val = "Col_" + col;
-                }
+
 
                 if (val.Contains('\n'))
                     val = val.Replace('\n', ' ');
@@ -323,13 +348,22 @@ namespace Bygdrift.Tools.CsvTool
                 if (val.IndexOfAny(chars) != -1)
                     val = "\"" + val.Replace("\"", "\"\"") + "\"";
 
+                if (addSpaces)
+                    try  //Passing double can go from 21 to 24 when converted to string - ex: 0.0000001129498786607691 becomes 1,12949878660769E-07
+                    {
+                        val += new string(' ', colMaxLengthsWithHeaders[col] - val.Length);
+                    }
+                    catch (Exception)
+                    {
+                        val = val.Substring(0, colMaxLengthsWithHeaders[col]);
+                    }
+
                 if (col < ColLimit.Max)
-                    val += ',';
+                    val += addSpaces ? ", " : ",";
 
                 rowObject.Append(val);
             }
             return (rowObject, isEmpty);
         }
-
     }
 }

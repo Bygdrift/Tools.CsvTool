@@ -54,6 +54,7 @@ namespace CsvToolTests
             csv.RecordToType("22", out long longVal);
             csv.RecordToType("22", out decimal decVal);
             csv.RecordToType("22", out DateTime dateVal);
+            Assert.AreEqual(dateVal, new DateTime());
         }
     }
 }

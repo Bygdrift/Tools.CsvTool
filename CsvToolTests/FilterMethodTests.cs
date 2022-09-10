@@ -12,8 +12,14 @@ namespace CsvToolTests
         {
             var csv = CreateCsv();
             var res = csv.FilterRows("Type", true, "Room");
-            Assert.IsTrue(res.ColLimit == (1,7));
-            Assert.IsTrue(res.RowLimit == (1,3));
+            Assert.IsTrue(res.ColLimit == (1, 7));
+            Assert.IsTrue(res.RowLimit == (1, 3));
+            Assert.AreEqual(res.ColTypes[1], csv.ColTypes[1]);
+
+            //var csv2 = new Csv("a, b, c").AddRow(null, 1, null);
+            //var csv2Filtered = csv2.FilterRows("b", true, 1);
+
+
         }
 
         private static Csv CreateCsv()

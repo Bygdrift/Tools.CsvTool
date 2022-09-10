@@ -1,12 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 
 namespace Bygdrift.Tools.CsvTool
 {
     public partial class Csv
     {
+
+        /// <summary>
+        /// Creates a shallow copy of the csv that will not be linked to the original
+        /// </summary>
+        public Csv GetCsvCopy()
+        {
+            var res = new Csv(Config);
+            res.ColMaxLengths = ColMaxLengths;
+            res.ColTypes = ColTypes;
+
+            foreach (var item in Headers)
+                res.AddHeader(item.Value);
+
+            foreach (var item in Records)
+                res.AddRecord(item.Key.Row, item.Key.Col, item.Value);
+
+            return res;
+        }
+
         /// <summary>
         /// Get a specific record
         /// </summary>
@@ -19,62 +37,97 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
-        /// Gets all entities for a specific column
+        /// Get a specific record
         /// </summary>
-        /// <param name="col">the coloumns index</param>
-        /// <param name="includeNullValues">if null values should be returned</param>
-        /// <returns></returns>
-        public Dictionary<int, object> GetColRecords(int col, bool includeNullValues = true)
+        /// <param name="row">rowId</param>
+        /// <param name="col">colId</param>
+        public T GetRecord<T>(int row, int col)
         {
-            var res = new Dictionary<int, object>();
-            for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
-                if (Records.TryGetValue((row, col), out object val) && (val != null || (val == null && includeNullValues)))
-                    res.Add(row, val);
-                else if (includeNullValues)
-                    res.Add(row, default);
+            if (Records.TryGetValue((row, col), out object val))
+            {
+                if (typeof(T) == typeof(object))  //Less work
+                    return (T)val;
 
-            return res;
+                if (RecordToType(val, out T valT))
+                    return valT;
+            }
+            return default;
         }
 
         /// <summary>
-        /// Gets all entities for a specific column
+        /// Get a specific record
         /// </summary>
-        /// <param name="headerName">The name of the header</param>
-        /// <param name="includeNullValues">if null values should be returned</param>
-        /// <returns></returns>
-        public Dictionary<int, object> GetColRecords(string headerName, bool includeNullValues = true)
+        /// <param name="row">rowId</param>
+        /// <param name="col">colId</param>
+        public T GetRecord<T>(int row, string headerName)
         {
-            if (TryGetColId(headerName, out int col))
-                return GetColRecords(col, includeNullValues);
+            var val = GetRecord(row, headerName);
+            if (RecordToType(val, out T valT))
+                return valT;
 
             return default;
         }
 
-        ///// <summary>
-        ///// If you have multiple records, then return the length of the one that are longest
-        ///// </summary>
-        //public int GetColRecordsMaxLength(int col)
-        //{
-        //    var res = GetColRecords(col).Max(o => o.Value?.ToString().Length);
-        //    return res ?? 0;
-        //}
-
-        //Jeg lukker denne ned fordi der er andre som kan det samme. Den forvirre og navnet er forkert da det skal ende på 's'
-        ///// <summary>
-        ///// Gets all entities for a specific column
-        ///// </summary>
-        ///// <param name="csv"></param>
-        ///// <param name="headerName">The name of the header to retrun</param>
-        ///// <param name="includeNullValues"></param>
-        ///// <returns></returns>
-        //public (int Col, Dictionary<int, object> Records) GetColRecord(string headerName, bool includeNullValues = true)
-        //{
-        //    return TryGetColId(headerName, out int header) ? (header, GetColRecords(header, includeNullValues)) : default;
-        //}
-
         /// <summary>
-        /// Gets all entities for a specific column
+        /// Get a specific record
         /// </summary>
+        /// <param name="row">rowId</param>
+        /// <param name="headerName">The name of the header</param>
+        public object GetRecord(int row, string headerName)
+        {
+            if (TryGetColId(headerName, out int col))
+            {
+                Records.TryGetValue((row, col), out object val);
+                return val;
+            }
+            else
+                throw new Exception($"The headerName '{headerName}' are not in csv");
+        }
+
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="col">the coloumns index</param>
+        /// <param name="includeNullValues">if null values should be returned</param>
+        public Dictionary<int, T> GetColRecords<T>(int col, bool includeNullValues = true)
+        {
+            var res = new Dictionary<int, T>();
+            for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
+            {
+                var val = GetRecord<T>(row, col);
+                if (includeNullValues || val != null)
+                    res.Add(row, val);
+            }
+
+            return res;
+        }
+
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="col">the coloumns index</param>
+        /// <param name="includeNullValues">if null values should be returned</param>
+        public Dictionary<int, object> GetColRecords(int col, bool includeNullValues = true)
+        {
+            return GetColRecords<object>(col, includeNullValues);
+        }
+
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="headerName">The name of the header</param>
+        /// <param name="includeNullValues">if null values should be returned</param>
+        public Dictionary<int, T> GetColRecords<T>(string headerName, bool includeNullValues = true)
+        {
+            if (TryGetColId(headerName, out int col))
+                return GetColRecords<T>(col, includeNullValues);
+
+            return default;
+        }
+
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="headerName">The name of the header</param>
+        /// <param name="includeNullValues">if null values should be returned</param>
+        public Dictionary<int, object> GetColRecords(string headerName, bool includeNullValues = true)
+        {
+            return GetColRecords<object>(headerName, includeNullValues);
+        }
+
+        /// <summary>Gets all entities for a specific column</summary>
         /// <param name="lookupHeader">The name of the header to lookup the value in</param>
         /// <param name="returnHeader">The header column to return. If null, the lookupHeader will be returned</param>
         /// <param name="lookupValue">The value to lookup within the headerName column</param>
@@ -85,35 +138,95 @@ namespace Bygdrift.Tools.CsvTool
             var res = new Dictionary<int, object>();
             if (TryGetColId(returnHeader, out int returnColumn) || TryGetColId(lookupHeader, out returnColumn))
             {
-                var rowRecords = GetRowsRecords(lookupHeader, ignoreCase, lookupValue);
+                var rowRecords = GetRowsRecords(lookupHeader, ignoreCase, includeNullValues);
                 foreach (var rowRecord in rowRecords)
                     res.Add(rowRecord.Key, rowRecord.Value[returnColumn]);
             }
             return res;
         }
 
-        /// <summary>
-        /// Gets all entities for a specific column and only unique results will be returned
-        /// </summary>
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="headerName">The name of the header to lookup the value in</param>
+        /// <param name="ignoreCase">If case on lookuValus should be ignored when comparing</param>
+        /// <param name="includeNullValues"></param>
+        public Dictionary<int, T> GetColRecords<T>(string headerName, bool ignoreCase, bool includeNullValues = true)
+        {
+            var res = new Dictionary<int, T>();
+            if (TryGetColId(headerName, out int returnColumn))
+            {
+                var rowRecords = GetRowsRecords(headerName, ignoreCase, includeNullValues);
+                foreach (var rowRecord in rowRecords)
+                    if (RecordToType<T>(rowRecord.Value[returnColumn], out T val))
+                        res.Add(rowRecord.Key, val);
+            }
+            return res;
+        }
+
+        /// <summary>Gets all entities for a specific column</summary>
         /// <param name="col">the coloumns index</param>
-        public IEnumerable<object> GetColRecordsDistinct(int col)
+        /// <param name="includeNullValues">if null values should be returned</param>
+        public IEnumerable<T> GetColRecordsDistinct<T>(int col, bool includeNullValues = true)
         {
-            var res = new List<object>();
+            var res = new List<T>();
             for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
-                if (Records.TryGetValue((row, col), out object val))
+            {
+                var val = GetRecord<T>(row, col);
+                if ((includeNullValues || val != null) && !res.Any(o => o.Equals(val)))
                     res.Add(val);
+            }
 
-            return res.Distinct();
+            return res;
         }
 
-        /// <summary>
-        /// Gets all entities for a specific column and only unique results will be returned
-        /// </summary>
-        /// <param name="headerName">The name of the header to retrun</param>
-        public (int Col, IEnumerable<object> Records) GetColRecordsDistinct(string headerName)
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="col">the coloumns index</param>
+        /// <param name="includeNullValues">if null values should be returned</param>
+        public IEnumerable<object> GetColRecordsDistinct(int col, bool includeNullValues = true)
         {
-            return TryGetColId(headerName, out int header) ? (header, GetColRecordsDistinct(header)) : default;
+            return GetColRecordsDistinct<object>(col, includeNullValues);
         }
+
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="headerName">The name of the header</param>
+        /// <param name="includeNullValues">if null values should be returned</param>
+        public IEnumerable<T> GetColRecordsDistinct<T>(string headerName, bool includeNullValues = true)
+        {
+            if (TryGetColId(headerName, out int col))
+                return GetColRecordsDistinct<T>(col, includeNullValues);
+
+            return default;
+        }
+
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="headerName">The name of the header</param>
+        /// <param name="includeNullValues">if null values should be returned</param>
+        public IEnumerable<object> GetColRecordsDistinct(string headerName, bool includeNullValues = true)
+        {
+            return GetColRecordsDistinct<object>(headerName, includeNullValues);
+        }
+
+        ///// <summary>
+        ///// Gets all entities for a specific column and only unique results will be returned
+        ///// </summary>
+        ///// <param name="col">the coloumns index</param>
+        //public IEnumerable<object> GetColRecordsDistinct(int col)
+        //{
+        //    var res = new List<object>();
+        //    for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
+        //        if (Records.TryGetValue((row, col), out object val))
+        //            res.Add(val);
+
+        //    return res.Distinct();
+        //}
+
+        ///// <summary>
+        ///// Gets all entities for a specific column and only unique results will be returned
+        ///// </summary>
+        ///// <param name="headerName">The name of the header to retrun</param>
+        //public (int Col, IEnumerable<object> Records) GetColRecordsDistinct(string headerName)
+        //{
+        //    return TryGetColId(headerName, out int header) ? (header, GetColRecordsDistinct(header)) : default;
+        //}
 
 
         /// <summary>
@@ -138,6 +251,22 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
+        /// Gives all headers in a string like "Id, Data"
+        /// </summary>
+        public KeyValuePair<int, string> GetHeader(string name)
+        {
+            return Headers.SingleOrDefault(o => o.Value == name);
+        }
+
+        /// <summary>
+        /// Gives all headers in a string like "Id, Data"
+        /// </summary>
+        public string GetHeadersAsString(string delimiter = ", ")
+        {
+            return string.Join(delimiter, Headers.OrderBy(o => o.Key).Select(o => o.Value));
+        }
+
+        /// <summary>
         /// Get multiple row records
         /// </summary>
         /// <param name="row"></param>
@@ -147,11 +276,11 @@ namespace Bygdrift.Tools.CsvTool
             var res = new Dictionary<int, object>();
 
             for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-                if (Records.TryGetValue((row, col), out object val))
+            {
+                var val = GetRecord(row, col);
+                if (includeNullValues || (!includeNullValues && val != null))
                     res.Add(col, val);
-                else if (includeNullValues)
-                    res.Add(col, default);
-
+            }
             return res;
         }
 
@@ -202,6 +331,35 @@ namespace Bygdrift.Tools.CsvTool
             return res;
         }
 
+        /// <summary>
+        /// Get multiple row records
+        /// </summary>
+        /// <param name="includeNullValues"></param>
+        public Dictionary<int, Dictionary<int, object>> GetRowsRecords(string orderedByHeaderName, bool ascending = true, bool includeNullValues = true)
+        {
+            var res = new Dictionary<(int Row, object OrderedBy), Dictionary<int, object>>();
+            if (TryGetHeader(orderedByHeaderName, out int orderedByHeaderCol))
+            {
+                for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
+                {
+                    var rowDict = new Dictionary<int, object>();
+                    for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
+                        if (Records.TryGetValue((row, col), out object val))
+                            rowDict.Add(col, val);
+                        else if (includeNullValues)
+                            rowDict.Add(col, default);
+
+                    var orderedByValue = GetRecord(row, orderedByHeaderCol);
+                    res.Add((row, orderedByValue), rowDict);
+                }
+            }
+
+            if (ascending)
+                return res.OrderBy(o => o.Key.OrderedBy).ToDictionary(o => o.Key.Row, o => o.Value);
+            else
+                return res.OrderByDescending(o => o.Key.OrderedBy).ToDictionary(o => o.Key.Row, o => o.Value);
+        }
+
         ///// <summary>
         ///// All rows that satisfies the expresion, are returned
         ///// </summary>
@@ -245,7 +403,7 @@ namespace Bygdrift.Tools.CsvTool
             var res = new Dictionary<int, Dictionary<int, object>>();
             if (TryGetColId(headerName, out int col))
             {
-                var records =  Records.Where(o => o.Key.Col == col && (value == null ? o.Value == null : o.Value != null && (ignoreCase ? o.Value.ToString().ToUpper().Equals(value.ToString().ToUpper()) : o.Value.Equals(value))));
+                var records = Records.Where(o => o.Key.Col == col && (value == null ? o.Value == null : o.Value != null && (ignoreCase ? o.Value.ToString().ToUpper().Equals(value.ToString().ToUpper()) : o.Value.Equals(value))));
                 var rows = records.Select(o => o.Key.Row).ToList();
                 foreach (var row in rows)
                     res.Add(row, GetRowRecords(row));
@@ -301,6 +459,15 @@ namespace Bygdrift.Tools.CsvTool
                 res.Add(item.Value, rowDict);
             }
             return res;
+        }
+
+        /// <summary>
+        /// Gives all headers in a string like "Id, Data"
+        /// </summary>
+        public bool TryGetHeader(string name, out int headerCol)
+        {
+            headerCol = Headers.SingleOrDefault(o => o.Value == name).Key;
+            return !string.IsNullOrEmpty(name) && Headers.ContainsValue(name);
         }
 
         /// <summary>
@@ -405,5 +572,8 @@ namespace Bygdrift.Tools.CsvTool
 
             return rowIds.ToArray();
         }
+
+
+
     }
 }

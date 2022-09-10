@@ -141,25 +141,16 @@ namespace CsvToolTests
             Assert.AreEqual(d1, d1ToStringToDecimal);
 
             string d2 = "800.41549497473432";
-            decimal d2AsDecimal = decimal.Parse(d2, cultureInfo);
+            double d2AsDouble = double.Parse(d2, cultureInfo);
 
             var csv = new Csv("a,b");
             csv.AddRecord(1, 1, d1);
             csv.AddRecord(1, 2, d2);
             csv.AddRecord(1, 3, null);
             Assert.AreEqual(csv.ColTypes[1], typeof(decimal));
-            Assert.AreEqual(csv.ColTypes[2], typeof(decimal));
+            Assert.AreEqual(csv.ColTypes[2], typeof(double));
             Assert.AreEqual(csv.GetRecord(1, 1), d1);
-            Assert.AreEqual(csv.GetRecord(1, 2), d2AsDecimal);
-        }
-
-        [TestMethod]
-        public void Culture()
-        {
-            var invariantCultureCsv = new Csv().AddRow("5,2");
-            var danishCulture = new Csv().Culture("da-DK").AddRow("5,2");
-            Assert.AreEqual(invariantCultureCsv.GetRecord(1, 1), 52m);
-            Assert.AreEqual(danishCulture.GetRecord(1, 1), 5.2m);
+            Assert.AreEqual(csv.GetRecord(1, 2), d2AsDouble);
         }
 
         [TestMethod]
@@ -387,7 +378,7 @@ namespace CsvToolTests
             Assert.IsTrue(csv.Headers.First().Value.Equals("Container"));
             Assert.IsTrue(csv.Records.First().Value.Equals(21));
             Assert.IsTrue(csv.ColTypes[1] == typeof(int));
-            Assert.IsTrue(csv.ColTypes[2] == typeof(decimal));
+            Assert.IsTrue(csv.ColTypes[2] == typeof(double));
             Assert.IsTrue(csv.ColTypes[3] == typeof(bool));
             Assert.IsTrue(csv.ColTypes[4] == typeof(DateTime));
             Assert.IsTrue(csv.ColTypes[5] == typeof(string));

@@ -13,39 +13,45 @@ namespace Bygdrift.Tools.CsvTool
     public partial class Csv
     {
         private Regex csvSplit;
-        internal Regex CsvSplit { get { return csvSplit ??= new("(?:^|,)(\"(?:[^\"])*\"|[^,]*)", RegexOptions.Compiled); } }
+        //internal Regex CsvSplit { get { return csvSplit ??= new("(?:^|,)(\"(?:[^\"])*\"|[^,]*)", RegexOptions.Compiled); } }
+        internal Regex CsvSplit { get { return csvSplit ??= new("(?<=^|,)(\"(?:[^\"]|\"\")*\"|[^,]*)", RegexOptions.Compiled); } }
 
         private char delimiter = ',';
 
         /// <summary>
-        /// Merges new csv into existing csv. 
+        /// Merges new csv into the returned csv. 
         /// </summary>
         /// <param name="mergedCsv"></param>
         /// <param name="createNewUniqueHeaderIfAlreadyExists">True: If fx value='Id' and exists, a new header will be made, called 'Id_2'. False: If fx value='Id' and exists, then the same id will be returned and no new header will be created</param>
         public Csv FromCsv(Csv mergedCsv, bool createNewUniqueHeaderIfAlreadyExists)
         {
-            if (this.RowCount == 0 && this.ColCount == 0)
+            if (mergedCsv == null || !mergedCsv.Records.Any())
+                return this;
+
+            var csv = GetCsvCopy();
+
+            if (csv.RowCount == 0 && csv.ColCount == 0)
             {
-                this.ColMaxLengths = mergedCsv.ColMaxLengths;
-                this.ColTypes = mergedCsv.ColTypes;
-                this.Headers = mergedCsv.Headers;
-                this.Records = mergedCsv.Records;
+                csv.ColMaxLengths = mergedCsv.ColMaxLengths;
+                csv.ColTypes = mergedCsv.ColTypes;
+                csv.Headers = mergedCsv.Headers;
+                csv.Records = mergedCsv.Records;
             }
 
             var headers = new Dictionary<int, int>();
-            var newRowStart = this.RowLimit.Max + 1;
+            var newRowStart = csv.RowLimit.Max + 1;
             for (int col = mergedCsv.ColLimit.Min; col <= mergedCsv.ColLimit.Max; col++)
             {
-                this.AddHeader(mergedCsv.Headers[col], createNewUniqueHeaderIfAlreadyExists, out int newCol);
+                csv.AddHeader(mergedCsv.Headers[col], createNewUniqueHeaderIfAlreadyExists, out int newCol);
                 var newRow = newRowStart;
                 for (int r = mergedCsv.RowLimit.Min; r <= mergedCsv.RowLimit.Max; r++)
                 {
-                    this.AddRecord(newRow, newCol, mergedCsv.GetRecord(r, col));
+                    csv.AddRecord(newRow, newCol, mergedCsv.GetRecord(r, col));
                     newRow++;
                 }
             }
 
-            return this;
+            return csv;
         }
 
         /// <summary>
@@ -83,7 +89,15 @@ namespace Bygdrift.Tools.CsvTool
             if (delimiter != ',')
             {
                 this.delimiter = delimiter;
-                csvSplit = new($"(?:^|{delimiter})(\"(?:[^\"])*\"|[^{delimiter}]*)", RegexOptions.Compiled);
+
+                ///TODO!
+                //Måske kan jeeg bruge denne: Kilde https://github.com/JoshClose/CsvHelper/blob/master/src/CsvHelper/CsvParser.cs#L304
+                // Escape regex special chars to use as regex pattern.
+                //var pattern = Regex.Replace(delimiter, @"([.$^{\[(|)*+?\\])", "\\$1");
+
+
+                //csvSplit = new($"(?:^|{delimiter})(\"(?:[^\"])*\"|[^{delimiter}]*)", RegexOptions.Compiled);
+                csvSplit = new($"(?<=^|{delimiter})(\"(?:[^\"]|\"\")*\"|[^{delimiter}]*)", RegexOptions.Compiled);
             }
 
             ReadHeader(this, reader.ReadLine());
@@ -298,11 +312,7 @@ namespace Bygdrift.Tools.CsvTool
 
             int col = 1;
             foreach (Match match in CsvSplit.Matches(input))
-            {
-                string val = match.Value?.TrimStart(delimiter).Trim('"').Trim();
-                csv.AddRecord(row, col, val);
-                col++;
-            }
+                csv.AddRecord(row, col++, match.Value?.Trim('"'));
         }
 
         internal Dictionary<int, object> SplitString(string input)

@@ -25,7 +25,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="value">Headers name</param>
         public Csv AddHeader(int col, string value)
         {
-            value = UniqueHeader(Headers, value, false);
+            value = UniqueHeader(value, false);
             if (Headers.ContainsKey(col))
                 Headers[col] = value;
             else
@@ -73,12 +73,12 @@ namespace Bygdrift.Tools.CsvTool
         public Csv AddHeader(string headerName, bool createNewUniqueHeaderIfAlreadyExists, out int col)
         {
             if (createNewUniqueHeaderIfAlreadyExists)
-                headerName = UniqueHeader(Headers, headerName, false);
+                headerName = UniqueHeader(headerName, false);
 
             var header = Headers.SingleOrDefault(o => o.Value.Equals(headerName));
             if (header.Value != null)
             {
-                    col = header.Key;
+                col = header.Key;
             }
             else
             {
@@ -89,8 +89,11 @@ namespace Bygdrift.Tools.CsvTool
             return this;
         }
 
-
-        /// <summary>First header col is 1 unless some cols already has been added</summary>
+        /// <summary>
+        /// Add multiple headers to a csv.
+        /// First header col is 1 unless some cols already has been added
+        /// </summary>
+        /// <param name="headers">Comma seperated string with headers. There can be space between</param>
         public Csv AddHeaders(string headers)
         {
             var cols = ColCount;
@@ -114,13 +117,25 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Add multiple headers to a csv
         /// </summary>
-        public Csv AddHeaders(Dictionary<string, int> headers)
+        public Csv AddHeaders(string[] headers)
         {
+            var col = 1;
             foreach (var item in headers)
-                AddHeader(item.Value, item.Key);
+                AddHeader(col++, item);
 
             return this;
         }
+
+        ///// <summary>
+        ///// Add multiple headers to a csv
+        ///// </summary>
+        //public Csv AddHeaders(Dictionary<string, int> headers)
+        //{
+        //    foreach (var item in headers)
+        //        AddHeader(item.Value, item.Key);
+
+        //    return this;
+        //}
 
         /// <summary>
         /// Adds or updates a record in the csv
@@ -181,8 +196,8 @@ namespace Bygdrift.Tools.CsvTool
             var col = ColCount == 0 ? 1 : ColLimit.Min;
             foreach (var item in args)
             {
-                if(!Headers.ContainsKey(col))
-                    AddHeader(col, String.Empty);
+                if (!Headers.ContainsKey(col))
+                    AddHeader(col, string.Empty);
 
                 AddRecord(row, col, item);
                 col++;
@@ -498,26 +513,6 @@ namespace Bygdrift.Tools.CsvTool
                     if (Records.TryGetValue((row, col), out object val))
                         if (val != null && val.ToString().Contains(oldValue))
                             Records[(row, col)] = val.ToString().Replace(oldValue, newValue);
-        }
-
-        /// <summary>
-        /// If there are two headeres like "a" and "A", the last will be "A_2"
-        /// </summary>
-        /// <param name="filoutEmptyHeaders">If there are empty headers, they will get a name like 'Col', 'Col_2'</param>
-        [Obsolete("There are no longer empty headers. An empty header will always get the name 'col' and 'col_n'. This function will be removed november 2022.")]
-        public void UniqueHeadersIgnoreCase(bool filoutEmptyHeaders)
-        {
-            var newHeaders = new Dictionary<int, string>();
-
-            for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-            {
-                if ((!Headers.TryGetValue(col, out string header) || header == null) && filoutEmptyHeaders)
-                    header = "col";
-
-                var newHeader = new Csv().UniqueHeader(newHeaders, header, true);
-                newHeaders.Add(col, newHeader);
-            }
-            Headers = newHeaders;
         }
     }
 }

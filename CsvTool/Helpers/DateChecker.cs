@@ -16,8 +16,8 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         ///Remember to handle null
         ///Use the info from Azure about timezone
 
-        public List<string> FormatsUsed = new();
-        
+        public List<string> DateFormatsUsed = new();
+
         /// <summary>
         /// The min length of the string
         /// </summary>
@@ -26,45 +26,38 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         /// <summary>
         /// The max length of the string
         /// </summary>
-        public int MaxLength = 19;
+        public int MaxLength = 29;
+        private readonly Config config;
 
-        /// <summary>
-        /// The list of formats that the date checker verifies agianst. It is posible to add or replace these.
-        /// </summary>
-        public List<string> Formats = new()
+        public DateChecker(Config config)
         {
-            "yyyy M d",
-            "yyyy-M-d",
-            "yyyy/M/d",
-            "yyyy-M-dTH:m:s",
-            "yyyy M d H:m:s",
-            "yyyy-M-d H:m:s",
-            "yyyy/M/d H:m:s",
-            "d M yyyy",
-            "d-M-yyyy",
-            "d/M/yyyy",
-            "d M yyyy H:m:s",
-            "d-M-yyyy H:m:s",
-            "d/M/yyyy H:m:s",
-        };
+            this.config = config;
+        }
 
-        internal bool TryParse(string s, out DateTime value)
+        internal bool TryParse(object input, out DateTime value)
         {
-            if (s.Length >= MinLength && s.Length <= MaxLength)
+            if (input.GetType() == typeof(DateTime))
             {
-                foreach (var item in FormatsUsed)
-                    if (TryParse(s, item, out value))
+                value = (DateTime)input;
+                return true;
+            }
+
+            var valueAsString = input.ToString();
+            if (valueAsString.Length >= MinLength && valueAsString.Length <= MaxLength)
+            {
+                foreach (var item in DateFormatsUsed)
+                    if (TryParse(valueAsString, item, out value))
                     {
                         //value = value.ToString("s");
                         return true;
                     }
 
-                foreach (var item in Formats)
+                foreach (var item in config.DateFormats)
                 {
-                    if (TryParse(s, item, out value))
+                    if (TryParse(valueAsString, item, out value))
                     {
-                        FormatsUsed.Add(item);
-                        Formats.Remove(item);
+                        DateFormatsUsed.Add(item);
+                        config.DateFormats.Remove(item);
                         return true;
                     }
                 }
