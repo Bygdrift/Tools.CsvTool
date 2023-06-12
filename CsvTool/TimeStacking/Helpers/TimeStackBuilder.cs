@@ -27,15 +27,15 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Helpers
         /// <summary>
         /// Finds the oldest and newest value and builds a csv with rows for each hour in that timespan. It can also be for each day, month, year - depending on timepartition.
         /// </summary>
-        public static Csv GetTimeStackedCsv(TimeStack stack, List<Span> spans, List<CsvColumn> csvColumns)
+        public static Csv GetTimeStackedCsv(TimeStack stack, List<Span> spans, List<CsvColumn> csvColumns, Config csvConfig = null)
         {
-            var csv = new Csv(csvColumns.Select(o => o.Header).ToArray());
+            var csv = new Csv(csvConfig, csvColumns.Select(o => o.Header).ToArray());
             var rowId = 1;
             foreach (var span in spans)
             {
                 foreach (var col in csvColumns)
                 {
-                    var res = stackTypes[col.ColumnType](span, col);
+                    var res = stackTypes[col.ColumnType](stack, span, col);
                     csv.AddRecord(rowId, col.Col, res);
                 }
                 rowId++;
@@ -59,46 +59,60 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Helpers
             return default;
         }
 
-        private static object CalcAverage(Span span, CsvColumn column)
+        
+
+        private static object CalcAverage(TimeStack stack, Span span, CsvColumn column)
         {
             var recValues = span.GetRecordValuessWithinSlot(column.IsSerialData, column.CsvCol);
             return recValues?.Average(o => column.IsAccumulated ? o.Value : o.Avg) * column.Factor;
         }
 
-        private static object CalcAverageWeighted(Span span, CsvColumn column)
+        private static object CalcAverageWeighted(TimeStack stack, Span span, CsvColumn column)
         {
             return span.SpanRows.Count > 0 ? span.GetRecordsWeighted(column.IsSerialData, column.CsvCol) * column.Factor : 0;
         }
 
-        private static object CalcFirst(Span span, CsvColumn column)
+        private static object CalcFirst(TimeStack stack, Span span, CsvColumn column)
         {
             var row = span.SpanRows.FirstOrDefault();
-            if(column.Factor == 1)
+            if (column.Factor == 1)
                 return row?.GetRecord<object>(row.RowNumber, column.CsvCol);
             else
                 return row?.GetRecord<double>(row.RowNumber, column.CsvCol) * column.Factor;
         }
 
-        private static object CalcLast(Span span, CsvColumn column)
+        private static object CalcFirstNotNull(TimeStack stack, Span span, CsvColumn column)
+        {
+            if (column?.CsvCol != null)
+            {
+                //var a = stack.Csv.GetColRecords(o => o.Key == stack.GroupHeader && o.Value == span.Group);
+                var records = stack.Csv.GetRowRecordsFirstMatch(stack.GroupHeader, span.Group, true, true);
+                var col = stack.Csv.Headers.First(o => o.Value == column.Header).Key;
+                return records[col];
+            }
+            return default;
+        }
+
+        private static object CalcLast(TimeStack stack, Span span, CsvColumn column)
         {
             var row = span.SpanRows.LastOrDefault();
             if (column.Factor == 1)
                 return row?.GetRecord<object>(column.IsSerialData ? (int)row.RowNumber2 : row.RowNumber, column.CsvCol);
             else
-                return  row?.GetRecord<double>(column.IsSerialData ? (int)row.RowNumber2 : row.RowNumber, column.CsvCol) * column.Factor;
+                return row?.GetRecord<double>(column.IsSerialData ? (int)row.RowNumber2 : row.RowNumber, column.CsvCol) * column.Factor;
         }
 
-        private static object CalcMin(Span span, CsvColumn column)
+        private static object CalcMin(TimeStack stack, Span span, CsvColumn column)
         {
-            return  span.SpanRows.Count > 0 ? span.GetRecordValuessWithinSlot(column.IsSerialData, column.CsvCol).Min().Value * column.Factor : 0;
+            return span.SpanRows.Count > 0 ? span.GetRecordValuessWithinSlot(column.IsSerialData, column.CsvCol).Min().Value * column.Factor : 0;
         }
 
-        private static object CalcMax(Span span, CsvColumn column)
+        private static object CalcMax(TimeStack stack, Span span, CsvColumn column)
         {
             return span.SpanRows.Count > 0 ? span.GetRecordValuessWithinSlot(column.IsSerialData, column.CsvCol).Max().Value * column.Factor : 0;
         }
 
-        private static object CalcSum(Span span, CsvColumn column)
+        private static object CalcSum(TimeStack stack, Span span, CsvColumn column)
         {
             var vals = span.GetRecordValuessWithinSlot(column.IsSerialData, column.CsvCol);
             if (vals == null)
@@ -107,17 +121,17 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Helpers
             return vals.Sum(o => column.IsAccumulated ? o.Value : o.Avg) * column.Factor;
         }
 
-        private static object CalcFill(Span span, CsvColumn column)
-        {
-            return default;
-        }
+        //private static object CalcFill(TimeStack stack, Span span, CsvColumn column)
+        //{
+        //    return default;
+        //}
 
-        private static object InfoFrom(Span span, CsvColumn column)
+        private static object InfoFrom(TimeStack stack, Span span, CsvColumn column)
         {
             return span.From;
         }
 
-        private static object InfoFormat(Span span, CsvColumn column)
+        private static object InfoFormat(TimeStack stack, Span span, CsvColumn column)
         {
             var res = "";
             var matches = Regex.Matches(column.Format, @"\[(.*?)\]");
@@ -163,32 +177,33 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Helpers
             return res;
         }
 
-        private static object InfoGroup(Span span, CsvColumn column)
+        private static object InfoGroup(TimeStack stack, Span span, CsvColumn column)
         {
-            
+
             return span.Group;
         }
 
-        private static object InfoLength(Span span, CsvColumn column)
+        private static object InfoLength(TimeStack stack, Span span, CsvColumn column)
         {
             return span.TimeInSpan * column.Factor;
         }
 
-        private static object InfoRowCount(Span span, CsvColumn column)
+        private static object InfoRowCount(TimeStack stack, Span span, CsvColumn column)
         {
             return span.SpanRows.Count * column.Factor;
         }
 
-        private static object InfoTo(Span span, CsvColumn column)
+        private static object InfoTo(TimeStack stack, Span span, CsvColumn column)
         {
             return span.To;
         }
 
-        private static readonly Dictionary<CsvColumnType, Func<Span, CsvColumn, object>> stackTypes = new()
+        private static readonly Dictionary<CsvColumnType, Func<TimeStack, Span, CsvColumn, object>> stackTypes = new()
         {
+            { CsvColumnType.CalcFirstNotNull, CalcFirstNotNull },
             { CsvColumnType.CalcAverage, CalcAverage },
             { CsvColumnType.CalcAverageWeighted, CalcAverageWeighted },
-            { CsvColumnType.CalcFill, CalcFill },
+            //{ CsvColumnType.CalcFill, CalcFill },
             { CsvColumnType.CalcFirst, CalcFirst },
             { CsvColumnType.CalcLast, CalcLast },
             { CsvColumnType.CalcMax, CalcMax },

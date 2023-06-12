@@ -1,4 +1,5 @@
 ﻿using ClosedXML.Excel;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -68,6 +69,18 @@ namespace Bygdrift.Tools.CsvTool
 
             stream.Position = 0;
             return stream;
+        }
+
+        /// <summary>
+        /// Export csv to an object
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public List<T> ToModel<T>() where T : class
+        {
+            var json = ToJson();
+            var res = JsonConvert.DeserializeObject<List<T>>(json);
+            return res;
         }
 
         /// <summary>
@@ -168,7 +181,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="paneName">The name of the worksheet</param>
         /// <param name="tableName">The name of the table inside Excel. If null, no fancy talbe will be added</param>
         /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
-        public void ToExcelFile(string filePath, string paneName, string tableName = null, int? take = null)
+        public void ToExcelFile(string filePath, string paneName = "Data", string tableName = null, int? take = null)
         {
             var workbook = ToExcelAsXlWokBook(paneName, tableName, take);
             workbook.SaveAs(filePath);
@@ -191,11 +204,11 @@ namespace Bygdrift.Tools.CsvTool
                 else
                 {
                     for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-                        worksheet.Cell(1, col + 1).Value = Headers[col];
+                        worksheet.Cell(1, col).Value = Headers[col];
 
                     for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
                         for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-                            worksheet.Cell(row + 2, col + 1).Value = GetRecord(row, col);
+                            worksheet.Cell(row + 1, col).Value = GetRecord(row, col);
                 }
             }
             return workbook;
@@ -253,25 +266,24 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
-        /// Exports data as an ExpandoList
+        /// Exports data as an ExpandoList.
         /// </summary>
         public IEnumerable<Dictionary<string, object>> ToExpandoList()
         {
             var res = new List<Dictionary<string, object>>();
             for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
             {
-                var isEmpty = true;
                 var dict = new Dictionary<string, object>();
                 foreach (var header in Headers)
                 {
-                    if (Records.TryGetValue((row, header.Key), out object value) && value != null)
-                        isEmpty = false;
+                    Records.TryGetValue((row, header.Key), out object val);
+                    if (val?.GetType() == typeof(DateTime))
+                        val = Config.DateHelper.DateTimeToString((DateTime)val);
 
-                    dict.Add(header.Value, value);
+                    //Records.TryGetValue((row, header.Key), out object value);
+                    dict.Add(header.Value, val);
                 }
-
-                if (!isEmpty)
-                    res.Add(dict);
+                res.Add(dict);
             }
             return res;
         }
@@ -306,6 +318,7 @@ namespace Bygdrift.Tools.CsvTool
             //Trim leading and trailng spaces
             //spaces outside quotes in a field are not allowed
             //Its okay to have a single quote in a record
+            var delimiter = addSpaces ? Config.Delimiter.ToString() + ' ' : Config.Delimiter.ToString();
             var chars = new char[] { '"', ',' };
             var rowObject = new StringBuilder();
             var isEmpty = true;
@@ -324,12 +337,18 @@ namespace Bygdrift.Tools.CsvTool
                 {
                     if (Records.TryGetValue(((int)row, col), out object recordVal))
                     {
+                        var type = recordVal?.GetType();
                         if (recordVal == null)
                             val = string.Empty;
-                        else if (recordVal.GetType() == typeof(DateTime))
+                        else if (type == typeof(DateTime))
                         {
                             isEmpty = false;
-                            val = ((DateTime)recordVal).ToString(Config.DateTimeOutput);
+                            val = Config.DateHelper.DateTimeToString((DateTime)recordVal);
+                        }
+                        else if (type == typeof(DateTimeOffset))
+                        {
+                            isEmpty = false;
+                            val = Config.DateHelper.DateTimeToString((DateTimeOffset)recordVal);
                         }
                         else
                         {
@@ -359,7 +378,7 @@ namespace Bygdrift.Tools.CsvTool
                     }
 
                 if (col < ColLimit.Max)
-                    val += addSpaces ? ", " : ",";
+                    val += delimiter;
 
                 rowObject.Append(val);
             }

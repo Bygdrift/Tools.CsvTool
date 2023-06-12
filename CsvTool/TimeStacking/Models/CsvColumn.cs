@@ -2,6 +2,8 @@
 
 namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
 {
+
+    /// <summary></summary>
     public class CsvColumn
     {
         /// <summary>Constructor</summary>
@@ -21,8 +23,13 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
             Factor = factor;
         }
 
+        /// <summary></summary>
         public int Col { get; }
+
+        /// <summary></summary>
         public int? CsvCol { get; }
+        
+        /// <summary></summary>
         public string CsvHeader { get; }
 
         /// <summary>The name of the header</summary>
@@ -30,10 +37,17 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
 
         /// <summary>The cumulationtype</summary>
         public CsvColumnType ColumnType { get; set; }
+
+        /// <summary></summary>
         public bool IsAccumulated { get; }
+        
+        /// <summary></summary>
         public bool IsSerialData { get; }
+
+        /// <summary></summary>
         public string Format { get; }
 
+        /// <summary></summary>
         public double Factor { get; set; }
     }
 }

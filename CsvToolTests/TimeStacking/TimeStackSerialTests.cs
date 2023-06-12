@@ -26,24 +26,27 @@ namespace CsvToolTests.TimeStacking
             Assert.AreEqual(csv.GetRecord(1, 2), "To: 2022-01");
         }
 
+        
         [TestMethod]
-        public void SerielData2()
+        public void SerielData3()
         {
-            var csvIn = new Csv("Time, Data")
-                .AddRow("2022-1-1 01:00:00", 10)
-                .AddRow("2022-1-1 01:30:00", 13)
-                .AddRow("2022-1-1 01:10:00", 11);
+            var csvIn = new Csv("Time, Group, Data")
+                .AddRow("2022-1-1 23:50:00","A", 10)
+                .AddRow("2022-1-2 00:30:00", "A",  20)
+                .AddRow("2022-1-1 23:50:00", "B", 34)
+                .AddRow("2022-1-2 00:30:00", "B",  35);
 
-            var timeStack = new TimeStack(csvIn, null, "Time")
-                .AddCalcAverage("Data", "DataAvg")
-                .AddCalcAverageWeighted("Data", "DataAvgW");
+            var timeStack = new TimeStack(csvIn, "Group", "Time")
+                .AddInfoFormat("Info", "Group: [:Group], From: [:From:dd-HH]")
+                .AddCalcAverage("Data", "Avg", true)
+                .AddCalcSum("Data", "Sum", true);
 
             var spans = timeStack.GetSpansPerHour();
             new DrawDigram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
             var csv = timeStack.GetTimeStackedCsv(spans);
-            Assert.AreEqual(csv.GetRecord(1, 1), 11.25d);
-            Assert.AreEqual(csv.GetRecord(1, 2), 1.6666666666666665d);
+            TraceOutput.Output(timeStack, 3);
         }
+
 
         [TestMethod]
         public void SerielDataAverageWeighted()
@@ -60,6 +63,29 @@ namespace CsvToolTests.TimeStacking
             var spans = timeStack.GetSpansPerHour();
             new DrawDigram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
             var csv = timeStack.GetTimeStackedCsv(spans);
+            Assert.AreEqual(csv.GetRecord(1, 1), 11.25d);
+            Assert.AreEqual(csv.GetRecord(1, 2), 1.6666666666666665d);
+        }
+
+        [TestMethod]
+        public void SerielDataAverageWeightedWithCsvConfig()
+        {
+            var config = new Config(null, "Central America Standard Time", FormatKind.TimeOffsetUTC);
+            //Assert.AreEqual(typeof(DateTimeOffset), csvIn.ColTypes[1]);
+
+            var csvIn = new Csv(config, "Time, Data")
+                .AddRow("2022-1-1 01:00:00", 10)
+                .AddRow("2022-1-1 01:10:00", 11)
+                .AddRow("2022-1-1 01:30:00", 13);
+
+            var timeStack = new TimeStack(csvIn, null, "Time")
+                .AddCalcAverage("Data", "DataAvg")
+                .AddCalcAverageWeighted("Data", "DataAvgW")
+                .AddInfoFrom("Fra");
+
+            var spans = timeStack.GetSpansPerHour();
+            new DrawDigram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
+            var csv = timeStack.GetTimeStackedCsv(spans, config);
             Assert.AreEqual(csv.GetRecord(1, 1), 11.25d);
             Assert.AreEqual(csv.GetRecord(1, 2), 1.6666666666666665d);
         }
@@ -150,7 +176,7 @@ namespace CsvToolTests.TimeStacking
             var spans = timeStack.GetSpansPerHour();
             var csv = timeStack.GetTimeStackedCsv(spans);
             //new DrawDigram(3000, 4000, "SampImag.png").DrawTimeStack(spans, true);
-            //Assert.AreEqual(csv.GetRecord(1, 7), 34.5195);
+            Assert.AreEqual(csv.GetRecord(1, 7), 34.5195);
             ////csv.ToCsvFile(Path.Combine(BasePath, "Files", "HFORS", "Out", "Out.csv"));
         }
     }

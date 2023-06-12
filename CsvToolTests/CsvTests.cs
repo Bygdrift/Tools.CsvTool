@@ -15,15 +15,7 @@ namespace CsvToolTests
             var date = DateTime.Parse("2021-1-26 14:43:58");
             var dates = new string[] {
                 date.ToString("s"),
-                date.ToString("d/M/yyyy"),
                 date.ToString("yyyy/M/d"),
-                date.ToString("dd-MM-yyyy HH:mm:ss"),
-                date.ToString("d-M-yyyy HH:mm:ss"),
-                date.ToString("dd-MM-yyyy"),
-                date.ToString("d-M-yyyy"),
-                date.ToString("dd/MM/yyyy HH:mm:ss"),
-                date.ToString("d/M/yyyy HH:mm:ss"),
-                date.ToString("dd/MM/yyyy"),
             };
 
             foreach (var item in dates)
@@ -34,11 +26,6 @@ namespace CsvToolTests
                 object res = item;
                 var type = csv.GetType(ref res).Type;
                 Assert.IsTrue(type == typeof(DateTime));
-
-
-                //var a = DateTime.TryParse(item, out DateTime date1);
-                //Assert.IsTrue(a);
-
             }
         }
 

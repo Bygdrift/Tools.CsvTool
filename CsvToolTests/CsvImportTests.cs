@@ -1,6 +1,8 @@
 ﻿using Bygdrift.Tools.CsvTool;
+using CsvToolTests.Model;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -51,7 +53,7 @@ namespace CsvToolTests
         }
 
         [TestMethod]
-        public void FromExcel()
+        public void FromExcelXls()
         {
             var filePath = Path.Combine(basePath, "Files", "Excel", "Simple data to csv.xls");
             var pane0Csv = new Csv().FromExcelFile(filePath, 0, 3, 1);  //Does not exist
@@ -72,6 +74,25 @@ namespace CsvToolTests
         }
 
         [TestMethod]
+        public void FromExcelTable()
+        {
+            var filePath = Path.Combine(basePath, "Files", "Excel", "simpleExportAsTable.xlsx");
+            var pane1Csv = new Csv().FromExcelFile(filePath, 1, 1, 1);
+            Assert.AreEqual((1, 2), pane1Csv.ColLimit);
+            Assert.AreEqual((1, 2), pane1Csv.RowLimit);
+        }
+
+        [TestMethod]
+        public void FromExcelRelationalTable()
+        {
+            var filePath = Path.Combine(basePath, "Files", "Excel", "simpleExportAsRelationalTable.xlsx");
+            var pane1Csv = new Csv().FromExcelFile(filePath, 1, 1, 1);
+            //Assert.AreEqual((1, 2), pane1Csv.ColLimit);
+            //Assert.AreEqual((1, 2), pane1Csv.RowLimit);
+        }
+
+
+        [TestMethod]
         public void FromFile_LinebreaksInHeaderMustFail()
         {
             var filePath = Path.Combine(basePath, "Files", "Csv", "LinebreaksInHeader.csv");
@@ -89,8 +110,9 @@ namespace CsvToolTests
         [TestMethod]
         public void FromFile_RightFormat()
         {
+            var csvConfig = new Config().AddFormats("d M yyyy, d-M-yyyy, d/M/yyyy, d M yyyy H:m:s, d-M-yyyy H:m:s, d/M/yyyy H:m:s");
             var filePath = Path.Combine(basePath, "Files", "Csv", "RightFormat.csv");
-            var csv = new Csv().FromCsvFile(filePath);
+            var csv = new Csv(csvConfig).FromCsvFile(filePath);
 
             Assert.AreEqual(csv.Records[(1, 1)].GetType(), typeof(int));
             Assert.AreEqual(csv.ColTypes[1], typeof(int));
@@ -116,21 +138,34 @@ namespace CsvToolTests
         public void FromJson()
         {
             var res = new Csv().FromJson("{\"a\":23.9,\"location\":{\"type\":\"Point\",\"coordinates\":[11.266823,55.640562442]},\"motion\":0,\"deviceId\":\"a817e03d633\", \"a\":23.9}", false);
-            Assert.AreEqual(res.Headers.Count, 5);
-            Assert.AreEqual(res.Records.Count, 5);
-            Assert.AreEqual(res.GetRecord(1, 3), "11.266823,  55.640562442");
-            Assert.AreEqual(res.Records.Last().Key, (1, 5));
-            Assert.IsTrue(res.RowLimit == (1, 1));
+            var output = res.ToCsvString();
+            Assert.AreEqual("a,location.type,location.coordinates,motion,deviceId\n23.9,Point,\"11.266823,  55.640562442\",0,a817e03d633\n", output);
 
             var res2 = new Csv().FromJson("[{\"a\":1,\"b\":2},{\"b\":3},{\"a\":4}]", false);
-            Assert.IsTrue(res2.RowLimit == (1, 3));
+            var output2 = res2.ToCsvString();
+            Assert.AreEqual("a,b\n1,2\n,3\n4,\n", output2);
 
             var res3 = new Csv().AddRecord(1, "id", "0").FromJson("[{\"a\":1,\"b\":2},{\"b\":3},{\"a\":4}]", false);
-            Assert.IsTrue(res3.RowLimit == (1, 4));
+            var output3 = res3.ToCsvString();
+            Assert.AreEqual("id,a,b\n0,,\n,1,2\n,,3\n,4,\n", output3);
 
             var res4 = new Csv().FromJson("[{\"a\":1,\"b\":1,\"location\":{\"type\":\"Point\",\"coordinates\":[11.260,55.640562442]}},{\"b\":1},{\"a\":1}]", false);
-            Assert.IsTrue(res4.RowLimit == (1, 3));
-            Assert.AreEqual(res4.Records.Count, 6);
+            var output4 = res4.ToCsvString();
+            Assert.AreEqual("a,b,location.type,[0].location.coordinates\n1,1,Point,\"11.26,  55.640562442\"\n,1,,\n1,,,\n", output4);
+        }
+
+        [TestMethod]
+        public void FromModelList()
+        {
+            var data = new List<ModelTest>
+            {
+                new ModelTest{Number = 30, Text = "Test1"},
+                new ModelTest{Number = 50, Text = "Test2"},
+            };
+
+            var csv = new Csv().FromModel(data);
+            var json = csv.ToJson();
+            Assert.AreEqual(json, "[{\"Number\":30,\"Text\":\"Test1\"},{\"Number\":50,\"Text\":\"Test2\"}]");
         }
 
         [TestMethod]
@@ -159,6 +194,8 @@ namespace CsvToolTests
         [TestMethod]
         public void FromStream()
         {
+            
+
             var csv = new Csv("Id, Data");
             csv.AddRecord(1, 1, 1);
             csv.AddRecord(1, 2, "text");

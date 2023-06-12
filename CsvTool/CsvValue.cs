@@ -27,7 +27,7 @@ namespace Bygdrift.Tools.CsvTool
             }
             if (type != typeof(string))
             {
-                var (IsTrue, Length) = IsType(type, ref value);
+                var (IsTrue, Length) = IsType(ref type, ref value);
                 if (IsTrue)
                     return (type, Length);
             }
@@ -57,14 +57,21 @@ namespace Bygdrift.Tools.CsvTool
                 value = boolVal;
                 return (typeof(bool), valueLength);
             }
-            if (DateChecker.TryParse(value, out DateTime dateValue))
+            if (Config.DateHelper.TryParseDateTimeOffset(value, out DateTimeOffset dateOffsetValue))
             {
+                value = dateOffsetValue;
+                return (typeof(DateTime), 25);
+            }
+            if (Config.DateHelper.TryParseDateTime(value, out DateTime dateValue))
+            {
+                if (Config.FormatKind == FormatKind.TimeOffsetUTC || Config.FormatKind == FormatKind.TimeOffsetDST)
+                {
+                    value = Config.DateHelper.ToDateTimeOffset(dateValue);
+                    return (typeof(DateTimeOffset), Config.DateHelper.DateTimeLength);
+                }
+
                 value = dateValue;
-
-                ///!TODO: Denne kan være mere effektiv
-                var length = Config.DateTimeOutput == "s" ? 19 : (Config.DateTimeOutput == "u" ? 20 : dateValue.ToString(Config.DateTimeOutput).Length);  //Length 20 DateTime.Now.ToUniversalTime().ToString("u").Length; 19 == DateTime.Now.ToString("s").Length;
-
-                return (typeof(DateTime), length);
+                return (typeof(DateTime), Config.DateHelper.DateTimeLength);
             }
             return (typeof(string), valueLength);
         }
@@ -74,7 +81,7 @@ namespace Bygdrift.Tools.CsvTool
         /// </summary>
         /// <param name="type"></param>
         /// <param name="value">An object</param>
-        public (bool IsTrue, int Length) IsType(Type type, ref object value)
+        public (bool IsTrue, int Length) IsType(ref Type type, ref object value)
         {
             var valueAsString = Convert.ToString(value, Config.CultureInfo.NumberFormat);
             if (string.IsNullOrEmpty(valueAsString))
@@ -115,12 +122,27 @@ namespace Bygdrift.Tools.CsvTool
                 value = boolVal;
                 return (true, valueLength);
             }
-            if (type == typeof(DateTime) && DateChecker.TryParse(value, out DateTime dateValue))
+            if (type == typeof(DateTimeOffset) && Config.DateHelper.TryParseDateTimeOffset(value, out DateTimeOffset dateOffsetValue))
             {
-                value = dateValue;
-                ///!TODO: Denne kan være mere effektiv
-                var length = Config.DateTimeOutput == "s" ? 19 : (Config.DateTimeOutput == "u" ? 20 : dateValue.ToString(Config.DateTimeOutput).Length);  //Length 20 DateTime.Now.ToUniversalTime().ToString("u").Length; 19 == DateTime.Now.ToString("s").Length;
-                return (true, length);
+                value = dateOffsetValue;
+                return (true, Config.DateHelper.DateTimeLength);
+            }
+            if (type == typeof(DateTime) && (Config.FormatKind == FormatKind.TimeOffsetUTC || Config.FormatKind == FormatKind.TimeOffsetDST) && Config.DateHelper.TryParseDateTime(value, out DateTime dateValue))
+            {
+                //if (Config.TimeZoneInfo == null)
+                //    value = dateValue;
+                //else
+                //{
+                value = Config.DateHelper.ToDateTimeOffset(dateValue);
+                type = typeof(DateTimeOffset);
+                //}
+
+                return (true, Config.DateHelper.DateTimeLength);
+            }
+            if (type == typeof(DateTime) && Config.DateHelper.TryParseDateTime(value, out DateTime dateValue2))
+            {
+                value = dateValue2;
+                return (true, Config.DateHelper.DateTimeLength);
             }
             return (false, valueLength);
         }
@@ -140,9 +162,30 @@ namespace Bygdrift.Tools.CsvTool
                 return true;
             }
 
+            var valueType = value.GetType();
             try
             {
-                if (type == typeof(DateTime) && DateChecker.TryParse(value, out DateTime dateValue))
+                if (type == valueType)
+                {
+                    result = value;
+                    return true;
+                }
+                if (type == typeof(string))
+                {
+                    result = value.ToString();
+                    return true;
+                }
+                if (type == typeof(DateTimeOffset) && Config.DateHelper.TryParseDateTimeOffset(value, out DateTimeOffset dateOffsetValue))
+                {
+                    result = dateOffsetValue;
+                    return true;
+                }
+                if (type == typeof(DateTime) && valueType == typeof(DateTimeOffset) && Config.DateHelper.TryParseDateTimeOffset(value, out DateTimeOffset dateOffsetValue2))
+                {
+                    result = Config.DateHelper.ToDateTime(dateOffsetValue2);
+                    return true;
+                }
+                if (type == typeof(DateTime) && Config.DateHelper.TryParseDateTime(value, out DateTime dateValue))
                 {
                     result = dateValue;
                     return true;
@@ -155,70 +198,6 @@ namespace Bygdrift.Tools.CsvTool
                 result = default;
                 return false;
             }
-
-            //result = default;
-
-            //var valueAsString = Convert.ToString(value, Config.CultureInfo.NumberFormat);
-            //if (type == typeof(string))
-            //{
-            //    result = Convert.ChangeType(valueAsString, type);
-            //    return true;
-            //}
-
-            //if (type == typeof(int))
-            //    if (int.TryParse(valueAsString, NumberStyles.Integer, Config.CultureInfo.NumberFormat, out int intVal))
-            //    {
-            //        result = Convert.ChangeType(intVal, type);
-            //        return true;
-            //    }
-            //    else
-            //        return false;
-
-            //if (type == typeof(long))
-            //    if (long.TryParse(valueAsString, NumberStyles.Integer, Config.CultureInfo.NumberFormat, out long longVal))
-            //    {
-            //        result = Convert.ChangeType(longVal, type);
-            //        return true;
-            //    }
-            //    else
-            //        return false;
-
-            //if (type == typeof(decimal))
-            //    if (decimal.TryParse(valueAsString, NumberStyles.Any, Config.CultureInfo.NumberFormat, out decimal decVal))
-            //    {
-            //        result = Convert.ChangeType(decVal, type);
-            //        return true;
-            //    }
-            //    else
-            //        return false;
-
-            //if (type == typeof(bool))
-            //    if (bool.TryParse(valueAsString, out bool boolVal))
-            //    {
-            //        result = Convert.ChangeType(boolVal, type);
-            //        return true;
-            //    }
-            //    else
-            //        return false;
-
-            //if (type == typeof(DateTime))
-            //    if (DateChecker.TryParse(valueAsString, out DateTime dateValue))
-            //    {
-            //        result = Convert.ChangeType(dateValue, type);
-            //        return true;
-            //    }
-            //    else
-            //        return false;
-
-            //try
-            //{
-            //    result = Convert.ChangeType(valueAsString, type);
-            //    return true;
-            //}
-            //catch (Exception)
-            //{
-            //    return false;
-            //}
         }
 
         /// <summary>

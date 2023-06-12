@@ -1,4 +1,6 @@
-﻿using ExcelDataReader;
+﻿using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Vml;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -13,7 +15,6 @@ namespace Bygdrift.Tools.CsvTool
     public partial class Csv
     {
         private Regex csvSplit;
-        //internal Regex CsvSplit { get { return csvSplit ??= new("(?:^|,)(\"(?:[^\"])*\"|[^,]*)", RegexOptions.Compiled); } }
         internal Regex CsvSplit { get { return csvSplit ??= new("(?<=^|,)(\"(?:[^\"]|\"\")*\"|[^,]*)", RegexOptions.Compiled); } }
 
         private char delimiter = ',';
@@ -90,13 +91,12 @@ namespace Bygdrift.Tools.CsvTool
             {
                 this.delimiter = delimiter;
 
-                ///TODO!
+                //TODO!
                 //Måske kan jeeg bruge denne: Kilde https://github.com/JoshClose/CsvHelper/blob/master/src/CsvHelper/CsvParser.cs#L304
                 // Escape regex special chars to use as regex pattern.
                 //var pattern = Regex.Replace(delimiter, @"([.$^{\[(|)*+?\\])", "\\$1");
 
 
-                //csvSplit = new($"(?:^|{delimiter})(\"(?:[^\"])*\"|[^{delimiter}]*)", RegexOptions.Compiled);
                 csvSplit = new($"(?<=^|{delimiter})(\"(?:[^\"]|\"\")*\"|[^{delimiter}]*)", RegexOptions.Compiled);
             }
 
@@ -116,7 +116,6 @@ namespace Bygdrift.Tools.CsvTool
         /// </summary>
         /// <param name="dataTable"></param>
         /// <param name="take">If it only shoul be some data that should be loaded, if the data amount is big</param>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "<Pending>")]
         public Csv FromDataTable(DataTable dataTable, int? take = null)
         {
             if (dataTable == null || dataTable.Columns.Count == 0)
@@ -138,45 +137,21 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
-        /// Converts a json string into a CSV.
+        /// Imports Csv from a list.
         /// </summary>
-        /// <param name="json">A string like: "{\"a\":1,\"b\":1}" or "[{\"a\":1,\"b\":1},{\"b\":1},{\"a\":1}]"</param>
-        /// <param name="convertArraysToStrings">True: arrays are converted to a single string. False: They are split out and gets each a column</param>
-        /// <returns></returns>
-        public Csv FromJson(string json, bool convertArraysToStrings)
+        public Csv FromModel<T>(IEnumerable<T> source) where T : class
         {
-            var jToken = JToken.Parse(json);
-            var row = this.RowLimit.Max + jToken.Type == JTokenType.Array ? 0 : 1;
-            FromJsonSub(jToken.Children(), row, convertArraysToStrings);
-            return this;
-        }
-
-        private void FromJsonSub(IEnumerable<JToken> jTokens, int row, bool convertArraysToStrings)
-        {
-            foreach (JToken item in jTokens)
+            var r = 1;
+            foreach (var item in source)
             {
-                if (item.Parent.Parent == null && item.Parent.Type == JTokenType.Array)
-                    ++row;
-
-                if (item.Type == JTokenType.Array)
+                foreach (var prop in item.GetType().GetProperties())
                 {
-                    var value = item.ToString().Replace("\r\n", string.Empty).TrimStart('[').TrimEnd(']').Trim();
-                    this.AddRecord(row, item.Path, value);
+                    var val = prop.GetValue(item, null);
+                    this.AddRecord(r, prop.Name, val);
                 }
-                else if (item.Children().Any())
-                    FromJsonSub(item.Children(), row, convertArraysToStrings);
-                else
-                {
-                    var path = item.Path;
-                    if (path.StartsWith('['))
-                    {
-                        var end = path.IndexOf('.');
-                        if (end != -1)
-                            path = path.Substring(end + 1);
-                    }
-                    this.AddRecord(row, path, ((JValue)item).Value);
-                }
+                r++;
             }
+            return this;
         }
 
         /// <summary>
@@ -201,61 +176,45 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="colStart">The start column in the excel pane. Minimum 1</param>
         /// <param name="rowStart">The start row in the excel pane. Minimum 1</param>
         /// <param name="firstRowIsHeader">If the first row continas header values</param>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "<Pending>")]
         public Csv FromExcelStream(Stream stream, int paneNumber = 1, int colStart = 1, int rowStart = 1, bool firstRowIsHeader = true)
         {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);  //Removes error: 'No data is available for encoding 1252'
-            using (var reader = ExcelReaderFactory.CreateReader(stream))
+            var wb = new XLWorkbook(stream);
+            if (paneNumber < 1 || paneNumber > wb.Worksheets.Count)
+                return this;
+
+            var ws = wb.Worksheets.ElementAt(paneNumber - 1);
+            var firstPossibleAddress = ws.Row(rowStart).Cell(colStart).Address;
+            var lastPossibleAddress = ws.LastCellUsed().Address;
+            var table = ws.Tables.Any() ? ws.Tables.First() : ws.Range(firstPossibleAddress, lastPossibleAddress).RangeUsed().AsTable();
+            var csvRow = 1;
+            var excelRow = 1;
+            foreach (var row in table.RowsUsed())  //Inspiration: https://github.com/closedxml/closedxml/wiki/Using-Tables
             {
-                if (paneNumber < 1 || paneNumber > reader.ResultsCount)
-                    return this;
-
-                for (int pane = 1; pane <= reader.ResultsCount; pane++)
+                var recordAdded = false;
+                var csvCol = 1;
+                foreach (var cell in row.Cells())
                 {
-                    if (pane == paneNumber)
-                        break;
-
-                    reader.NextResult();
-                }
-
-                var excelColMax = reader.FieldCount;
-                var excelRowMax = reader.RowCount;
-                var csvRow = 1;
-
-                if (excelColMax == 0 || excelRowMax == 0 || colStart > excelColMax || rowStart > excelRowMax)
-                    return this;
-
-                for (int excelRow = 1; excelRow <= excelRowMax; excelRow++)
-                {
-                    reader.Read();
-                    if (excelRow >= rowStart)
+                    var val = cell.CachedValue;  //By using cached Value, some errors with relation to tables are not thrown as with cell.Value. Furthermore danish punctuation as 1.000,00 are witten as 1000.00
+                    if (excelRow == 1 && firstRowIsHeader)
+                        this.AddHeader(csvCol, val.ToString());
+                    else
                     {
-                        var recordAdded = false;
-                        var csvCol = 1;
-                        for (int excelCol = colStart; excelCol <= excelColMax; excelCol++)
+                        if (val.GetType() == typeof(double))
                         {
-                            var val = reader.GetValue(excelCol - 1);
-
-                            if (val != null && excelRow == rowStart && firstRowIsHeader)
-                                this.AddHeader(csvCol, val.ToString());
-                            if (val != null && (excelRow > rowStart || !firstRowIsHeader))
-                            {
-                                if (val.GetType() == typeof(double))
-                                {
-                                    var valInt = Convert.ToInt32(val);
-                                    if (valInt == (double)val)
-                                        val = valInt;
-                                }
-
-                                this.AddRecord(csvRow, csvCol, val);
-                                recordAdded = true;
-                            }
-                            csvCol++;
+                            var valInt = Convert.ToInt32(val);
+                            if (valInt == (double)val)
+                                val = valInt;
                         }
-                        if (recordAdded)
-                            csvRow++;
+
+                        this.AddRecord(csvRow, csvCol, val);
+                        recordAdded = true;
                     }
+                    csvCol++;
                 }
+                if (recordAdded)
+                    csvRow++;
+
+                excelRow++;
             }
             return this;
         }
@@ -293,6 +252,48 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
+        /// Converts a json string into a CSV.
+        /// </summary>
+        /// <param name="json">A string like: "{\"a\":1,\"b\":1}" or "[{\"a\":1,\"b\":1},{\"b\":1},{\"a\":1}]"</param>
+        /// <param name="convertArraysToStrings">True: arrays are converted to a single string. False: They are split out and gets each a column</param>
+        /// <returns></returns>
+        public Csv FromJson(string json, bool convertArraysToStrings)
+        {
+            var jToken = JToken.Parse(json);
+            var rowStart = this.RowLimit.Max + jToken.Type == JTokenType.Array ? 0 : 1;
+            FromJsonSub(jToken.Children(), rowStart, convertArraysToStrings);
+            return this;
+        }
+
+        private void FromJsonSub(IEnumerable<JToken> jTokens, int row, bool convertArraysToStrings)
+        {
+            foreach (JToken item in jTokens)
+            {
+                if (item.Parent.Parent == null && item.Parent.Type == JTokenType.Array)
+                    ++row;
+
+                if (item.Type == JTokenType.Array)
+                {
+                    var value = item.ToString().Replace("\r\n", string.Empty).TrimStart('[').TrimEnd(']').Trim();
+                    this.AddRecord(row, item.Path, value);
+                }
+                else if (item.Children().Any())
+                    FromJsonSub(item.Children(), row, convertArraysToStrings);
+                else
+                {
+                    var path = item.Path;
+                    if (path.StartsWith('['))
+                    {
+                        var end = path.IndexOf('.');
+                        if (end != -1)
+                            path = path.Substring(end + 1);
+                    }
+                    this.AddRecord(row, path, ((JValue)item).Value);
+                }
+            }
+        }
+
+        /// <summary>
         /// Converts an object like a propertyclas to csv.
         /// </summary>
         /// <param name="o">An object like a class with poperties</param>
@@ -301,7 +302,8 @@ namespace Bygdrift.Tools.CsvTool
         public Csv FromObject(object o, bool convertArraysToStrings)
         {
             var jToken = JToken.FromObject(o);
-            FromJsonSub(jToken.Children(), jToken.Type == JTokenType.Array ? 0 : 1, convertArraysToStrings);
+            var rowStart = jToken.Type == JTokenType.Array ? 0 : 1;
+            FromJsonSub(jToken.Children(), rowStart, convertArraysToStrings);
             return this;
         }
 
@@ -329,6 +331,31 @@ namespace Bygdrift.Tools.CsvTool
             }
             return res;
         }
+
+        /// <summary>
+        /// Splits a string by a delimiter
+        /// </summary>
+        /// <param name="input">A string like "a, b" will becom "a", "b"</param>
+        /// <param name="delimiter">the seprator</param>
+        /// <returns></returns>
+        public static Dictionary<int, string> SplitString(string input, char delimiter)
+        {
+            var splitter = new Regex($"(?<=^|{delimiter})(\"(?:[^\"]|\"\")*\"|[^{delimiter}]*)");
+
+            var res = new Dictionary<int, string>();
+            if (!string.IsNullOrEmpty(input))
+            {
+                int col = 1;
+                //foreach (Match match in splitter.Matches(input.Trim(' ', delimiter)))
+                foreach (Match match in splitter.Matches(input))
+                {
+                    var val = match.Value?.TrimStart(delimiter).Trim();
+                    res.Add(col++, val);
+                }
+            }
+            return res;
+        }
+
 
         /// <returns>False if last record starts with " but don't end with one - then it must be truncated with the next line</returns>
         private void ReadHeader(Csv csv, string input)

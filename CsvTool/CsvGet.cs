@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml.Vml;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -58,7 +59,7 @@ namespace Bygdrift.Tools.CsvTool
         /// Get a specific record
         /// </summary>
         /// <param name="row">rowId</param>
-        /// <param name="col">colId</param>
+        /// <param name="headerName">The name of the header</param>
         public T GetRecord<T>(int row, string headerName)
         {
             var val = GetRecord(row, headerName);
@@ -84,9 +85,32 @@ namespace Bygdrift.Tools.CsvTool
                 throw new Exception($"The headerName '{headerName}' are not in csv");
         }
 
+        /// <summary>
+        /// All rows that satisfies the expresion, are returned
+        /// </summary>
+        /// <returns>Dictionary&lt;ColNumber, Dictionary&lt;RowNumber, T&gt;&gt;</returns>
+        public Dictionary<int, Dictionary<int, object>> GetColRecords(Func<KeyValuePair<(int Row, int Col), object>, bool> expr, bool includeNullValues = true)
+        {
+            var res = new Dictionary<int, Dictionary<int, object>>();
+            var cols = Records.Where(expr).Select(o => o.Key.Row).Distinct();
+            foreach (var col in cols)
+            {
+                var rowDict = new Dictionary<int, object>();
+                for (int row = ColLimit.Min; row <= ColLimit.Max; row++)
+                    if (Records.TryGetValue((row, col), out object val))
+                        rowDict.Add(row, val);
+                    else if (includeNullValues)
+                        rowDict.Add(row, default);
+
+                res.Add(col, rowDict);
+            }
+            return res;
+        }
+
         /// <summary>Gets all entities for a specific column</summary>
         /// <param name="col">the coloumns index</param>
         /// <param name="includeNullValues">if null values should be returned</param>
+        /// <returns>Dictionary&lt;ColNumber, T&gt;</returns>
         public Dictionary<int, T> GetColRecords<T>(int col, bool includeNullValues = true)
         {
             var res = new Dictionary<int, T>();
@@ -103,6 +127,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>Gets all entities for a specific column</summary>
         /// <param name="col">the coloumns index</param>
         /// <param name="includeNullValues">if null values should be returned</param>
+        /// <returns>Dictionary&lt;ColNumber, object&gt;</returns>
         public Dictionary<int, object> GetColRecords(int col, bool includeNullValues = true)
         {
             return GetColRecords<object>(col, includeNullValues);
@@ -111,6 +136,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>Gets all entities for a specific column</summary>
         /// <param name="headerName">The name of the header</param>
         /// <param name="includeNullValues">if null values should be returned</param>
+        /// <returns>Dictionary&lt;ColNumber, T&gt;</returns>
         public Dictionary<int, T> GetColRecords<T>(string headerName, bool includeNullValues = true)
         {
             if (TryGetColId(headerName, out int col))
@@ -122,6 +148,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>Gets all entities for a specific column</summary>
         /// <param name="headerName">The name of the header</param>
         /// <param name="includeNullValues">if null values should be returned</param>
+        /// <returns>Dictionary&lt;ColNumber, object&gt;</returns>
         public Dictionary<int, object> GetColRecords(string headerName, bool includeNullValues = true)
         {
             return GetColRecords<object>(headerName, includeNullValues);
@@ -131,36 +158,37 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="lookupHeader">The name of the header to lookup the value in</param>
         /// <param name="returnHeader">The header column to return. If null, the lookupHeader will be returned</param>
         /// <param name="lookupValue">The value to lookup within the headerName column</param>
-        /// <param name="ignoreCase">If case on lookuValus should be ignored when comparing</param>
+        /// <param name="caseSensitive">If case on lookuValus should be ignored when comparing</param>
         /// <param name="includeNullValues"></param>
-        public Dictionary<int, object> GetColRecords(string lookupHeader, string returnHeader, object lookupValue, bool ignoreCase, bool includeNullValues = true)
+        /// <returns>Dictionary&lt;ColNumber, object&gt;</returns>
+        public Dictionary<int, object> GetColRecords(string lookupHeader, string returnHeader, object lookupValue, bool includeNullValues = true, bool caseSensitive = true)
         {
             var res = new Dictionary<int, object>();
-            if (TryGetColId(returnHeader, out int returnColumn) || TryGetColId(lookupHeader, out returnColumn))
+            if (TryGetColId(returnHeader, out int returnColumn))
             {
-                var rowRecords = GetRowsRecords(lookupHeader, ignoreCase, includeNullValues);
+                var rowRecords = GetRowRecordsMatch(lookupHeader, lookupValue, includeNullValues, caseSensitive);
                 foreach (var rowRecord in rowRecords)
                     res.Add(rowRecord.Key, rowRecord.Value[returnColumn]);
             }
             return res;
         }
 
-        /// <summary>Gets all entities for a specific column</summary>
-        /// <param name="headerName">The name of the header to lookup the value in</param>
-        /// <param name="ignoreCase">If case on lookuValus should be ignored when comparing</param>
-        /// <param name="includeNullValues"></param>
-        public Dictionary<int, T> GetColRecords<T>(string headerName, bool ignoreCase, bool includeNullValues = true)
-        {
-            var res = new Dictionary<int, T>();
-            if (TryGetColId(headerName, out int returnColumn))
-            {
-                var rowRecords = GetRowsRecords(headerName, ignoreCase, includeNullValues);
-                foreach (var rowRecord in rowRecords)
-                    if (RecordToType<T>(rowRecord.Value[returnColumn], out T val))
-                        res.Add(rowRecord.Key, val);
-            }
-            return res;
-        }
+        ///// <summary>Gets all entities for a specific column</summary>
+        ///// <param name="headerName">The name of the header to lookup the value in</param>
+        ///// <param name="includeNullValues"></param>
+        ///// <returns>Dictionary&lt;ColNumber, T&gt;</returns>
+        //public Dictionary<int, T> GetColRecords<T>(string headerName, bool includeNullValues = true)
+        //{
+        //    var res = new Dictionary<int, T>();
+        //    if (TryGetColId(headerName, out int returnColumn))
+        //    {
+        //        var rowRecords = GetRowsRecords(headerName, true, includeNullValues);
+        //        foreach (var rowRecord in rowRecords)
+        //            if (RecordToType(rowRecord.Value[returnColumn], out T val))
+        //                res.Add(rowRecord.Key, val);
+        //    }
+        //    return res;
+        //}
 
         /// <summary>Gets all entities for a specific column</summary>
         /// <param name="col">the coloumns index</param>
@@ -205,58 +233,53 @@ namespace Bygdrift.Tools.CsvTool
             return GetColRecordsDistinct<object>(headerName, includeNullValues);
         }
 
-        ///// <summary>
-        ///// Gets all entities for a specific column and only unique results will be returned
-        ///// </summary>
-        ///// <param name="col">the coloumns index</param>
-        //public IEnumerable<object> GetColRecordsDistinct(int col)
-        //{
-        //    var res = new List<object>();
-        //    for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
-        //        if (Records.TryGetValue((row, col), out object val))
-        //            res.Add(val);
-
-        //    return res.Distinct();
-        //}
-
-        ///// <summary>
-        ///// Gets all entities for a specific column and only unique results will be returned
-        ///// </summary>
-        ///// <param name="headerName">The name of the header to retrun</param>
-        //public (int Col, IEnumerable<object> Records) GetColRecordsDistinct(string headerName)
-        //{
-        //    return TryGetColId(headerName, out int header) ? (header, GetColRecordsDistinct(header)) : default;
-        //}
-
-
-        /// <summary>
-        /// All rows that satisfies the expresion, are returned
-        /// </summary>
-        public Dictionary<int, Dictionary<int, object>> GetColRecords(Func<KeyValuePair<(int Row, int Col), object>, bool> expr, bool includeNullValues = true)
+        /// <summary>Gets all entities for a specific column</summary>
+        /// <param name="headerName">The name of the header</param>
+        /// <param name="headerNameGroup">The header to group against</param>
+        /// <param name="includeNullValues">if null values should be returned</param>
+        /// <param name="caseSensetive"></param>
+        /// <returns>Dictionary&lt;GroupValue, Dictionary&lt;RowNumber, T&gt;&gt;</returns>
+        public Dictionary<object, Dictionary<int, T>> GetColRecordsGrouped<T>(string headerNameGroup, string headerName, bool includeNullValues = true, bool caseSensetive = true)
         {
-            var res = new Dictionary<int, Dictionary<int, object>>();
-            var cols = Records.Where(expr).Select(o => o.Key.Row).Distinct();
-            foreach (var col in cols)
+            var colNumber = GetHeader(headerName);
+            var res = new Dictionary<object, Dictionary<int, T>>();
+            var groupColRecords = GetColRecordsDistinct(headerNameGroup, includeNullValues);
+            foreach (object groupRecord in groupColRecords)
             {
-                var rowDict = new Dictionary<int, object>();
-                for (int row = ColLimit.Min; row <= ColLimit.Max; row++)
-                    if (Records.TryGetValue((row, col), out object val))
-                        rowDict.Add(row, val);
-                    else if (includeNullValues)
-                        rowDict.Add(row, default);
+                var rowRecords = GetRowRecordsMatch(headerNameGroup, groupRecord, includeNullValues, caseSensetive);
+                if (rowRecords != null)
+                {
+                    var subRes = new Dictionary<int, T>();
+                    foreach (var r in rowRecords.Keys)
+                        if (rowRecords[r].TryGetValue(colNumber, out object val) && RecordToType<T>(val, out T resultVal))  //TODO: Denne kan være pænere
+                            subRes.Add(r, resultVal);
 
-                res.Add(col, rowDict);
+                    res.Add(groupRecord, subRes);
+                }
             }
             return res;
         }
 
         /// <summary>
-        /// Gives all headers in a string like "Id, Data"
+        /// Gives a header
         /// </summary>
-        public KeyValuePair<int, string> GetHeader(string name)
+        /// <returns>-1 if none found</returns>
+        public int GetHeader(string headerName)
         {
-            return Headers.SingleOrDefault(o => o.Value == name);
+            return Headers.ContainsValue(headerName) ? Headers.Single(o => o.Value == headerName).Key : -1;
         }
+
+        /// <summary>
+        /// Gives a header
+        /// </summary>
+        public string GetHeader(int col)
+        {
+            if (Headers.TryGetValue(col, out string value))
+                return value;
+
+            return string.Empty;
+        }
+
 
         /// <summary>
         /// Gives all headers in a string like "Id, Data"
@@ -290,12 +313,14 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="headerName">Name of the header volumn that should be looked in for the value</param>
         /// <param name="value">The value to lookup in the column with headerName</param>
         /// <param name="includeNullValues"></param>
-        public Dictionary<int, object> GetRowRecordsFirstMatch(string headerName, object value, bool includeNullValues = true)
+        /// <param name="caseSensitive">If the search should be case sensetive</param>
+        public Dictionary<int, object> GetRowRecordsFirstMatch(string headerName, object value, bool includeNullValues = true, bool caseSensitive = true)
         {
             if (TryGetColId(headerName, out int colHeader))
             {
                 var res = new Dictionary<int, object>();
-                var records = Records.FirstOrDefault(o => o.Key.Col == colHeader && o.Value?.ToString() == value?.ToString());
+                var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+                var records = Records.FirstOrDefault(o => o.Key.Col == colHeader && o.Value.ToString().Equals(value.ToString(), comparison));
                 if (records.Value != null)
                 {
                     var row = records.Key.Row;
@@ -304,6 +329,42 @@ namespace Bygdrift.Tools.CsvTool
                             res.Add(col, val);
                         else if (includeNullValues)
                             res.Add(col, default);
+                }
+                return res;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Finds all mathcing rows
+        /// </summary>
+        /// <param name="headerName">Name of the header volumn that should be looked in for the value</param>
+        /// <param name="value">The value to lookup in the column with headerName</param>
+        /// <param name="includeNullValues"></param>
+        /// <param name="caseSensitive">If the search should be case sensetive</param>
+        /// <returns>Dictionary&lt;RowNumber, Dictionary&lt;ColNumber, object&gt;&gt;</returns>
+        public Dictionary<int, Dictionary<int, object>> GetRowRecordsMatch(string headerName, object value, bool includeNullValues = true, bool caseSensitive = true)
+        {
+            var res = new Dictionary<int, Dictionary<int, object>>();
+            if (TryGetColId(headerName, out int colHeader))
+            {
+                var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+                var rows = Records.Where(o => o.Key.Col == colHeader && o.Value.ToString().Equals(value.ToString(), comparison))?.Select(o => o.Key.Row);
+                if (rows.Any())
+                {
+                    foreach (var row in rows)
+                    {
+                        var subRes = new Dictionary<int, object>();
+                        for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
+                        {
+                            var val = GetRecord(row, col);
+                            if (val != null)
+                                subRes.Add(col, val);
+                            else if (includeNullValues)
+                                subRes.Add(col, default);
+                        }
+                        res.Add(row, subRes);
+                    }
                 }
                 return res;
             }
@@ -334,6 +395,8 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Get multiple row records
         /// </summary>
+        /// <param name="orderedByHeaderName">The name of the header that result should be ordered by</param>
+        /// <param name="ascending"></param>
         /// <param name="includeNullValues"></param>
         public Dictionary<int, Dictionary<int, object>> GetRowsRecords(string orderedByHeaderName, bool ascending = true, bool includeNullValues = true)
         {
@@ -360,50 +423,16 @@ namespace Bygdrift.Tools.CsvTool
                 return res.OrderByDescending(o => o.Key.OrderedBy).ToDictionary(o => o.Key.Row, o => o.Value);
         }
 
-        ///// <summary>
-        ///// All rows that satisfies the expresion, are returned
-        ///// </summary>
-        ///// <returns>rowId and a dictionary with colId and value</returns>
-        //public Dictionary<int, Dictionary<int, object>> GetRowsRecords(Func<KeyValuePair<(int Row, int Col), object>, bool> expr, bool includeNullValues = true)
-        //{
-        //    var res = new Dictionary<int, Dictionary<int, object>>();
-
-        //    foreach (var row in Records.Where(expr).Select(o => o.Key.Row).Distinct())
-        //    {
-        //        var rowDict = new Dictionary<int, object>();
-        //        for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-        //            if (Records.TryGetValue((row, col), out object val))
-        //                rowDict.Add(col, val);
-        //            else if (includeNullValues)
-        //                rowDict.Add(col, default);
-
-        //        res.Add(row, rowDict);
-        //    }
-        //    return res;
-        //}
-
-        ///// <param name="headerName">The name of the header to lookup the value in</param>
-        ///// <param name="value">The value to lookup within the headerName column</param>
-        ///// <param name="includeNullValues"></param>
-        ///// <returns>rowId and a dictionary with colId and value</returns>
-        //public Dictionary<int, Dictionary<int, object>> GetRowsRecords(string headerName, object value, bool includeNullValues = true)
-        //{
-        //    if (TryGetColId(headerName, out int col))
-        //        return GetRowsRecords(o => o.Key.Col == col && o.Value?.ToString() == value?.ToString(), includeNullValues);
-
-        //    return default;
-        //}
-
         /// <param name="headerName">The name of the header to lookup the value in</param>
         /// <param name="value">The value to lookup within the headerName column. Comparison is right ignores upper an lowercase</param>
-        /// <param name="ignoreCase">If case should be ignored</param>
+        /// <param name="caseSensetive">If case should be ignored</param>
         /// <returns>rowId and a dictionary with colId and value</returns>
-        public Dictionary<int, Dictionary<int, object>> GetRowsRecords(string headerName, bool ignoreCase, object value)
+        public Dictionary<int, Dictionary<int, object>> GetRowsRecords(string headerName, bool caseSensetive, object value)
         {
             var res = new Dictionary<int, Dictionary<int, object>>();
             if (TryGetColId(headerName, out int col))
             {
-                var records = Records.Where(o => o.Key.Col == col && (value == null ? o.Value == null : o.Value != null && (ignoreCase ? o.Value.ToString().ToUpper().Equals(value.ToString().ToUpper()) : o.Value.Equals(value))));
+                var records = Records.Where(o => o.Key.Col == col && (value == null ? o.Value == null : o.Value != null && (caseSensetive ? o.Value.Equals(value) : o.Value.ToString().ToUpper().Equals(value.ToString().ToUpper()))));
                 var rows = records.Select(o => o.Key.Row).ToList();
                 foreach (var row in rows)
                     res.Add(row, GetRowRecords(row));
@@ -519,19 +548,68 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
+        /// Try to get a record an return if it succeded or not
+        /// </summary>
+        /// <param name="row">rowId</param>
+        /// <param name="headerName">The name of the header</param>
+        /// <param name="value">The value will be available from here</param>
+        public bool TryGetRecord(int row, string headerName, out object value)
+        {
+            if (TryGetColId(headerName, out int col))
+                return Records.TryGetValue((row, col), out value);
+            else
+            {
+                value = null;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Try to get a record an return if it succeded or not
+        /// </summary>
+        /// <param name="row">rowId</param>
+        /// <param name="col">colId</param>
+        /// <param name="value">The value will be available from here</param>
+        public bool TryGetRecord<T>(int row, int col, out T value)
+        {
+            if (Records.TryGetValue((row, col), out object val))
+                if (RecordToType(val, out value))
+                    return true;
+
+            value = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Try to get a record an return if it succeded or not
+        /// </summary>
+        /// <param name="row">rowId</param>
+        /// <param name="headerName">The name of the header</param>
+        /// <param name="value">The value will be available from here</param>
+        public bool TryGetRecord<T>(int row, string headerName, out T value)
+        {
+            if(TryGetRecord(row, headerName, out object val))
+                if (RecordToType(val, out value))
+                    return true;
+
+            value = default;
+            return false;
+        }
+
+        /// <summary>
         /// Try to get the col ID for the first header that mathes
         /// </summary>
         /// <param name="headerName"></param>
         /// <param name="row">rowId</param>
         /// <param name="includeNullValues"></param>
         /// <param name="value">The value will be available from here</param>
-        /// <param name="ignoreCase"></param>
-        public bool TryGetRowFirstId(string headerName, object value, bool ignoreCase, out int row, bool includeNullValues = true)
+        /// <param name="caseSensetive"></param>
+        public bool TryGetRowFirstId(string headerName, object value, bool caseSensetive, out int row, bool includeNullValues = true)
         {
             var colValues = GetColRecords(headerName, includeNullValues);
             if (colValues != default)
             {
-                var res = ignoreCase ? colValues.FirstOrDefault(o => o.Value?.ToString().ToUpper() == value?.ToString().ToUpper()) : colValues.FirstOrDefault(o => o.Value?.ToString() == value?.ToString());
+                var res = caseSensetive ? colValues.FirstOrDefault(o => o.Value?.ToString() == value?.ToString()) : colValues.FirstOrDefault(o => o.Value?.ToString().ToUpper() == value?.ToString().ToUpper());
                 if (res.Value != null)
                 {
                     row = res.Key;
@@ -544,9 +622,9 @@ namespace Bygdrift.Tools.CsvTool
 
         /// <param name="headerName"></param>
         /// <param name="omitEachFirstRedundantValue">If false, al redundant vals are returned. If true: For each set of redundant values, the first value will not be returned.</param>
-        /// <param name="ignoreCase"></param>
+        /// <param name="caseSensetive"></param>
         /// <returns>RowIds or null if none</returns>
-        public int[] GetRowsRecordsRedundants(string headerName, bool omitEachFirstRedundantValue, bool ignoreCase)
+        public int[] GetRowsRecordsRedundants(string headerName, bool omitEachFirstRedundantValue, bool caseSensetive)
         {
             var rowIds = new List<int>();
             var colRecords = GetColRecords(headerName);
@@ -554,7 +632,7 @@ namespace Bygdrift.Tools.CsvTool
             if (colRecords == null)
                 return null;
 
-            var duplicates = ignoreCase ? colRecords.GroupBy(o => o.Value?.ToString().ToUpper()).Where(o => o.Count() > 1) : colRecords.GroupBy(o => o.Value).Where(o => o.Count() > 1);
+            var duplicates = caseSensetive ? colRecords.GroupBy(o => o.Value).Where(o => o.Count() > 1) : colRecords.GroupBy(o => o.Value?.ToString().ToUpper()).Where(o => o.Count() > 1);
             if (!duplicates.Any())
                 return null;
 
@@ -572,8 +650,5 @@ namespace Bygdrift.Tools.CsvTool
 
             return rowIds.ToArray();
         }
-
-
-
     }
 }

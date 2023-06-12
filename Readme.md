@@ -202,6 +202,10 @@ string json = new Csv().FromCsvFile(path).ToJson();
 
 ### There are more functions inside.
 
+## Contact
+
+For information or consultant hours, please write to bygdrift@gmail.com.
+
 # Updates
 
 ## 1.0.2

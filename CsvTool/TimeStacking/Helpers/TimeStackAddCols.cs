@@ -4,24 +4,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-//namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
 namespace Bygdrift.Tools.CsvTool.TimeStacking
 
 {
+    /// <summary>A way to partitiate data in to regular tim chunks of hours, days and months</summary>
     public partial class TimeStack
     {
         private static readonly Regex csvSplit = new("(?:^|,)(\"(?:[^\"])*\"|[^,]*)", RegexOptions.Compiled);
-        //private readonly bool isSerialData;
-        //private readonly Csv origCsv;
 
         internal List<CsvColumn> Columns { get; set; } = new();
-
-
-        //public TimeStack(bool isSerialData, Csv origCsv)
-        //{
-        //    this.isSerialData = isSerialData;
-        //    this.origCsv = origCsv;
-        //}
 
         private TimeStack AddCol(CsvColumnType stackType, string header, string newHeader, bool isAccumulated, bool mustBeInOrigCsv, string format, double factor)
         {
@@ -50,6 +41,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
             return this;
         }
 
+        /// <summary>Calculate average from a chosen column from the rows that are in a current time slot. But only if the records content can be transformed into a double.</summary>
         public TimeStack AddCalcAverage(string existingHeaders, string newHeaders = null, bool isAccumulated = false, double factor = 1)
         {
             return AddCols(CsvColumnType.CalcAverage, existingHeaders, newHeaders, isAccumulated, false, null, factor);
@@ -63,26 +55,39 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
             return AddCols(CsvColumnType.CalcAverageWeighted, existingHeaders, newHeaders, isAccumulated, false, null, factor);
         }
 
+        /// <summary></summary>
         public TimeStack AddCalcFirst(string existingHeaders, string newHeaders = null, bool isAccumulated = false, double factor = 1)
         {
             return AddCols(CsvColumnType.CalcFirst, existingHeaders, newHeaders, isAccumulated, false, null, factor);
         }
 
+        /// <summary>
+        /// Finds a value thats preferably not null in current group
+        /// </summary>
+        public TimeStack AddCalcFirstNotNull(string existingHeaders, string newHeaders = null, bool isAccumulated = false, double factor = 1)
+        {
+            return AddCols(CsvColumnType.CalcFirstNotNull, existingHeaders, newHeaders, isAccumulated, false, null, factor);
+        }
+
+        /// <summary></summary>
         public TimeStack AddCalcLast(string existingHeaders, string newHeaders = null, bool isAccumulated = false, double factor = 1)
         {
             return AddCols(CsvColumnType.CalcLast, existingHeaders, newHeaders, isAccumulated, false, null, factor);
         }
 
+        /// <summary></summary>
         public TimeStack AddCalcMax(string existingHeaders, string newHeaders = null, bool isAccumulated = false, double factor = 1)
         {
             return AddCols(CsvColumnType.CalcMax, existingHeaders, newHeaders, isAccumulated, false, null, factor);
         }
 
+        /// <summary></summary>
         public TimeStack AddCalcMin(string existingHeaders, string newHeaders = null, bool isAccumulated = false, double factor = 1)
         {
             return AddCols(CsvColumnType.CalcMin, existingHeaders, newHeaders, isAccumulated, false, null, factor);
         }
 
+        /// <summary></summary>
         public TimeStack AddCalcSum(string existingHeaders, string newHeaders = null, bool isAccumulated = false, double factor = 1)
         {
             return AddCols(CsvColumnType.CalcSum, existingHeaders, newHeaders, isAccumulated, false, null, factor);
@@ -101,36 +106,34 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
             return AddCol(CsvColumnType.InfoFormat, header, null, false, false, format, 1);
         }
 
+        /// <summary></summary>
         public TimeStack AddInfoFrom(string header, string format = null)
         {
             return AddCol(CsvColumnType.InfoFrom, header, null, false, false, format, 1);
         }
 
+        /// <summary></summary>
         public TimeStack AddInfoGroup(string header, string format = null)
         {
             return AddCol(CsvColumnType.InfoGroup, header, null, false, false, format, 1);
         }
 
-
+        /// <summary></summary>
         public TimeStack AddInfoLength(string header, string format = null, double factor = 1)
         {
             return AddCols(CsvColumnType.InfoLength, header, null, false, false, format, factor);
         }
 
+        /// <summary></summary>
         public TimeStack AddInfoRowCount(string header, string format = null, double factor = 1)
         {
             return AddCol(CsvColumnType.InfoRowCount, header, null, false, false, format, factor);
         }
 
+        /// <summary></summary>
         public TimeStack AddInfoTo(string header, string format = null)
         {
             return AddCol(CsvColumnType.InfoTo, header, null, false, false, format, 1);
-        }
-
-        public TimeStack RemoveCols()
-        {
-            Columns = new();
-            return this;
         }
 
         private static IEnumerable<string> SplitString(string input)

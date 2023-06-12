@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<!--Notice to Bygdrift developer: Create nuget package: dotnet pack-->
 	<PropertyGroup>
 		<TargetFramework>net6.0</TargetFramework>
-		<Version>1.1.0</Version>
+		<Version>1.1.1</Version>
 		<Authors>kenboc</Authors>
 		<Company>Bygdrift</Company>
 		<Description>Import or construct, modify, filter and export csv files. Can also import and export from Excel, json, DataTable, stream, string, ExpandoObject.</Description>
@@ -19,21 +18,17 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageReleaseNotes>
-			Implemented timestacking
+			Made GetRowRecordsFirstMatch case sensetive
 		</PackageReleaseNotes>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
-	<ItemGroup>
-	  <Compile Remove="TimeStacking\Models\StackSettingsOld.cs" />
-	</ItemGroup>
-
+	
 	<ItemGroup>
 		<None Include="icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ClosedXML" Version="0.95.4" />
-		<PackageReference Include="ExcelDataReader" Version="3.6.0" />
+		<PackageReference Include="ClosedXML" Version="0.97.0" />
 		<PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
 	</ItemGroup>
 

@@ -7,7 +7,7 @@ namespace Bygdrift.Tools.CsvTool
     public partial class Csv
     {
         /// <summary>
-        /// Add a whold column to the CSV and give each record in the column, the same value
+        /// Add a whole column to the CSV and give each record in the column, the same value
         /// </summary>
         /// <param name="headerName">name of the header</param>
         /// <param name="value">The value to be distributed out in each record in the colum</param>
@@ -22,14 +22,14 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <param name="col">First col has lowest number and the same number used to referenced records</param>
-        /// <param name="value">Headers name</param>
-        public Csv AddHeader(int col, string value)
+        /// <param name="headerName">Headers name</param>
+        public Csv AddHeader(int col, string headerName)
         {
-            value = UniqueHeader(value, false);
+            headerName = UniqueHeader(headerName, false);
             if (Headers.ContainsKey(col))
-                Headers[col] = value;
+                Headers[col] = headerName;
             else
-                Headers.Add(col, value);
+                Headers.Add(col, headerName);
 
             if (ColTypes == null || !ColTypes.ContainsKey(col))
                 ColTypes.Add(col, null);  //Remember to tak care of those nulls that doesnt gets parsed to string, decimal, long and bool
@@ -77,9 +77,7 @@ namespace Bygdrift.Tools.CsvTool
 
             var header = Headers.SingleOrDefault(o => o.Value.Equals(headerName));
             if (header.Value != null)
-            {
                 col = header.Key;
-            }
             else
             {
                 col = ColLimit.Max + 1;
@@ -97,7 +95,7 @@ namespace Bygdrift.Tools.CsvTool
         public Csv AddHeaders(string headers)
         {
             var cols = ColCount;
-            foreach (var item in SplitString(headers.Trim(' ', ',')))
+            foreach (var item in SplitString(headers, ','))
                 AddHeader(item.Key + cols, item.Value.ToString().Trim());
 
             return this;

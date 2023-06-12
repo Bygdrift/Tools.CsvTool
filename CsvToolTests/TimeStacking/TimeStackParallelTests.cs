@@ -2,6 +2,7 @@
 using Bygdrift.Tools.CsvTool.TimeStacking;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace CsvToolTests.TimeStacking
@@ -84,6 +85,21 @@ namespace CsvToolTests.TimeStacking
 
             Assert.AreEqual(csv.Records.Count, 4);
             Assert.AreEqual(csv.GetRecord(2, 1), 0.33333333333333331);
+        }
+
+        [TestMethod]
+        public void GetFirst()
+        {
+            var csvIn = new Csv("From, To, Group, Data")
+                .AddRow("2022-1-1 07:00:00", "2022-1-1 08:00:00", "A", "D")
+                .AddRow("2022-1-1 09:00:00", "2022-1-1 10:00:00", "A", "D");
+
+            var timeStack = new TimeStack(csvIn, "Group", "From", "To").AddCalcFirstNotNull("Data");
+            var spans = timeStack.GetSpansPerHour();
+            var csv = timeStack.GetTimeStackedCsv(spans);
+            var json = csv.ToJson(true);
+            Trace.WriteLine(json);
+            Assert.AreEqual("D", csv.GetRecord(2,1));
         }
 
         [TestMethod]

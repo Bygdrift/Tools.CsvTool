@@ -2,19 +2,23 @@
 
 namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
 {
+    /// <summary></summary>
     public class SpanRow : Row
     {
         private double? _spanInnerSlot;
         private double? _spanOuterSlot;
 
+        /// <summary></summary>
         public SpanRow(Row row, Span span, TimeSpan timeWithinSpan) : base(row.Csv, row.RowNumber, row.RowNumber2, row.Group, row.From, row.To)
         {
             Span = span;
             TimeWithinSpan = timeWithinSpan;
         }
 
+        /// <summary></summary>
         public TimeSpan TimeWithinSpan { get; }
 
+        /// <summary></summary>
         public Span Span { get; }
 
         /// <summary>

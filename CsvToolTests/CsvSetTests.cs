@@ -10,6 +10,8 @@ namespace CsvToolTests
     [TestClass]
     public class CsvSetTests
     {
+        private Config csvConfig = new Config().AddFormats("d M yyyy, d-M-yyyy, d/M/yyyy, d M yyyy H:m:s, d-M-yyyy H:m:s, d/M/yyyy H:m:s");
+
         [TestMethod]
         public void AddHeaders2()
         {
@@ -67,7 +69,7 @@ namespace CsvToolTests
         [TestMethod]
         public void AddRecord()
         {
-            var csv = new Csv("Number,Text");
+            var csv = new Csv(csvConfig, "Number,Text");
             csv.AddRecord(1, 1, null);
             Assert.AreEqual(csv.ColTypes[1], null);
             csv.AddRecord(2, 1, "21");
@@ -311,7 +313,7 @@ namespace CsvToolTests
             csv.AddRecord(4, 1, "b");
             csv.AddRecord(5, 1, "b");
             csv.AddRecord(6, 1, "c");
-            csv.RemoveRedundantRows("A", true);
+            csv.RemoveRedundantRows("A", false);
             Assert.IsTrue(csv.RowCount == 4);
 
             csv = new Csv("A");
@@ -321,7 +323,7 @@ namespace CsvToolTests
             csv.AddRecord(4, 1, "b");
             csv.AddRecord(5, 1, "b");
             csv.AddRecord(6, 1, "c");
-            csv.RemoveRedundantRows("A", false);
+            csv.RemoveRedundantRows("A", true);
             Assert.IsTrue(csv.RowCount == 5);
         }
 
@@ -357,17 +359,17 @@ namespace CsvToolTests
         [TestMethod]
         public void AddDates()
         {
-            Assert.AreEqual(new Csv().AddRow("09-10-2014").ColTypes[1], typeof(DateTime));
-            Assert.AreEqual(new Csv().AddRow("26-10-2021 14:43:58").ColTypes[1], typeof(DateTime));
-            Assert.AreEqual(new Csv().AddRow("2012-09-09").ColTypes[1], typeof(DateTime));
-            Assert.AreEqual(new Csv().AddRow("2012-09-09 14:23:21").ColTypes[1], typeof(DateTime));
-            Assert.AreEqual(new Csv().AddRow("2012-09-20T00:00:00").ColTypes[1], typeof(DateTime));
+            Assert.AreEqual(new Csv(csvConfig).AddRow("09-10-2014").ColTypes[1], typeof(DateTime));
+            Assert.AreEqual(new Csv(csvConfig).AddRow("26-10-2021 14:43:58").ColTypes[1], typeof(DateTime));
+            Assert.AreEqual(new Csv(csvConfig).AddRow("2012-09-09").ColTypes[1], typeof(DateTime));
+            Assert.AreEqual(new Csv(csvConfig).AddRow("2012-09-09 14:23:21").ColTypes[1], typeof(DateTime));
+            Assert.AreEqual(new Csv(csvConfig).AddRow("2012-09-20T00:00:00").ColTypes[1], typeof(DateTime));
         }
 
         [TestMethod]
         public void VerifyCsvParsing()
         {
-            var csv = new Csv();
+            var csv = new Csv(csvConfig);
             csv.AddRecord(1, 1, "21");
             csv.AddRecord(1, 2, "21.1");
             csv.AddRecord(1, 3, "true");

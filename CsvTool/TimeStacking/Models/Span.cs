@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
 {
+    /// <summary></summary>
     public class Span
     {
         private TimeSpan? _span;
@@ -11,6 +12,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
         private List<FromTo> _timesInSpan;
         private double? _timeInSpan;
 
+        /// <summary></summary>
         public Span(TimePartition timePartition, DateTime from, DateTime to, object group)
         {
             TimePartition = timePartition;
@@ -19,18 +21,25 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
             Group = group;
         }
 
+        /// <summary></summary>
         public TimePartition TimePartition { get; }
 
+        /// <summary></summary>
         public DateTime From { get; }
 
+        /// <summary></summary>
         public DateTime To { get; }
 
+        /// <summary></summary>
         public object Group { get; set; }
 
+        /// <summary></summary>
         public TimeSpan TimeSpan { get { return (TimeSpan)(_span ??= _span = To - From); } }
 
+        /// <summary></summary>
         public List<SpanRow> SpanRows { get; set; } = new();
 
+        /// <summary></summary>
         public double GetRecordsWeighted(bool isSerialData, int? col)
         {
             var recs = GetRecordValuessWithinSlot(isSerialData, col);
@@ -121,6 +130,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
             return res;
         }
 
+        /// <summary>Try add a row</summary>
         public void TryAddRow(Row row)
         {
             if ((row.From < From && row.To < From) || (row.From > To && row.To > To))

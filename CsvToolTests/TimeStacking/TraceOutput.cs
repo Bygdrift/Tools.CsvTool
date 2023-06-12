@@ -16,29 +16,30 @@ namespace CsvToolTests.TimeStacking
             var csv = timeStack.GetTimeStackedCsv(spans);
 
             var spanGroups = TimeStackBuilder.GetSpanGroups(timeStack, TimePartition.Hours);
-            foreach (var spanGroup in spanGroups)
-                for (int s = 0; s < spanGroup.Value.Count; s++)
-                {
-                    var span = spanGroup.Value[s];
-                    Write($"Slot {s}: From: {span.From}, To: {span.To}:");
-                    WriteTT("rows", span.SpanRows.Count);
-
-                    for (int r = 0; r < spanGroup.Value[s].SpanRows.Count; r++)
+            if (spanGroups != null)
+                foreach (var spanGroup in spanGroups)
+                    for (int s = 0; s < spanGroup.Value.Count; s++)
                     {
-                        var row = span.SpanRows[r];
-                        WriteT($"Row {r}:");
-                        WriteTT($"From: {row.From}, To: {row.To}");
-                        WriteTT("Span", row.TimeSpan);
-                        WriteTT("SpanInnerSlot", row.SpanInnerSlot);
-                        WriteTT("SpanOuterSlot", row.SpanOuterSlot);
-                        if (colValue.HasValue)
+                        var span = spanGroup.Value[s];
+                        Write($"Slot {s}: From: {span.From}, To: {span.To}:");
+                        WriteTT("rows", span.SpanRows.Count);
+
+                        for (int r = 0; r < spanGroup.Value[s].SpanRows.Count; r++)
                         {
-                            WriteTT("Record1", row.GetRecord<double>(row.RowNumber, colValue));
-                            if (row.RowNumber2 != null)
-                                WriteTT("Record2", row.GetRecord<double>((int)row.RowNumber2, colValue));
+                            var row = span.SpanRows[r];
+                            WriteT($"Row {r}:");
+                            WriteTT($"From: {row.From}, To: {row.To}");
+                            WriteTT("Span", row.TimeSpan);
+                            WriteTT("SpanInnerSlot", row.SpanInnerSlot);
+                            WriteTT("SpanOuterSlot", row.SpanOuterSlot);
+                            if (colValue.HasValue)
+                            {
+                                WriteTT("Record1", row.GetRecord<double>(row.RowNumber, colValue));
+                                if (row.RowNumber2 != null)
+                                    WriteTT("Record2", row.GetRecord<double>((int)row.RowNumber2, colValue));
+                            }
                         }
                     }
-                }
 
             Write("Result:");
             WriteT(csv.ToJson(true));

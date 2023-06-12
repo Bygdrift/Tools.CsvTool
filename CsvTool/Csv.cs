@@ -11,7 +11,7 @@ namespace Bygdrift.Tools.CsvTool
     /// </summary>
     public partial class Csv
     {
-        private DateChecker _dateChecker;
+        //private DateHelper _dateHelper;
         internal (int? Min, int? Max) _colLimit = (null, null);
         internal (int? Min, int? Max) _rowLimit = (null, null);
 
@@ -54,21 +54,23 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Create a new csv class
         /// </summary>
+        /// <param name="config">A config to decribe special loadings like delimiter and handling date and time</param>
         /// <param name="headers">Comma seperated string with headers. There can be space between</param>
         public Csv(Config config, string headers)
         {
+            Config = config ?? new Config();
             AddHeaders(headers);
-            Config = config;
         }
 
         /// <summary>
         /// Create a new csv class
         /// </summary>
+        /// <param name="config">A config to decribe special loadings like delimiter and handling date and time</param>
         /// <param name="headers">An array  with headers</param>
         public Csv(Config config, string[] headers)
         {
+            Config = config ?? new Config();
             AddHeaders(headers);
-            Config = config;
         }
 
         ///// <summary>
@@ -81,10 +83,10 @@ namespace Bygdrift.Tools.CsvTool
         //    Culture();
         //}
 
-        /// <summary>
-        /// A class that verifies if a value is a date. It is possible to replace the predefined date formats, if another culture than the predefined should be used. Dot it by replacing the 
-        /// </summary>
-        internal DateChecker DateChecker { get { return _dateChecker ??= new DateChecker(Config); } }
+        ///// <summary>
+        ///// A class that verifies if a value is a date. It is possible to replace the predefined date formats, if another culture than the predefined should be used. Dot it by replacing the 
+        ///// </summary>
+        //internal DateHelper DateHelper { get { return _dateHelper ??= new DateHelper(Config); } }
 
         /// <summary>
         /// All headers in current CSV, represented by column id and name
@@ -138,7 +140,8 @@ namespace Bygdrift.Tools.CsvTool
             get { return _rowLimit.Min == null || _rowLimit.Max == null ? 0 : RowLimit.Max - RowLimit.Min + 1; }
         }
 
-        public Config Config { get; }
+        /// <summary>Configuration of how to read/write csv</summary>
+        public Config Config { get; set; }
 
         /// <summary>
         /// If there are two or more headers with the same name, they wil get a suffix of _n so thre times Id will become Id, Id_2, Id_3
@@ -151,10 +154,10 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// If there are two or more headers with the same name, they wil get a suffix of _n so thre times Id will become Id, Id_2, Id_3
         /// </summary>
-        internal static string UniqueHeader(Dictionary<int, string> headers, string value, bool ignoreCase = false)
+        internal string UniqueHeader(Dictionary<int, string> headers, string value, bool ignoreCase = false)
         {
             if (string.IsNullOrEmpty(value))
-                value = "col";
+                value = Config.HeaderNameIfNull;
 
             var res = value;
             if (headers.Any(o => o.Value.Equals(value, ignoreCase ? StringComparison.InvariantCultureIgnoreCase : StringComparison.InvariantCulture)))
@@ -174,7 +177,7 @@ namespace Bygdrift.Tools.CsvTool
             if (ColTypes.ContainsKey(col) && ColTypes[col] != null)  //The type has already been dectectet earlier, so look up if it's the same type again
             {
                 valType = ColTypes[col];
-                (isTrue, length) = IsType(valType, ref value);
+                (isTrue, length) = IsType(ref valType, ref value);
             }
             if (!isTrue)  //It was not the same type, so use some more time to detect the actual type
                 (valType, length) = GetType(ref value);
@@ -206,6 +209,8 @@ namespace Bygdrift.Tools.CsvTool
             //if (newType != null && newType == null) return oldType;
             if (oldType == typeof(string) || newType == typeof(string)) return typeof(string);
             if (oldType == typeof(int) && newType == typeof(long)) return newType;
+            if (oldType == typeof(DateTime) && newType == typeof(DateTimeOffset)) return newType;
+            if (oldType == typeof(DateTimeOffset) && newType == typeof(DateTime)) return newType;
             //if (oldType == typeof(long) &&  -- string
             //if (oldType == typeof(decimal) && --string
             //if (oldType == typeof(bool) && --string

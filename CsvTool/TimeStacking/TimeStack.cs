@@ -9,6 +9,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
     public partial class TimeStack
     {
         internal readonly Csv Csv;
+        private readonly string headerFrom;
         private readonly int headerFromCol;
         private readonly int? headerToCol;  //Is null if data is in timeserie
         private DateTime? _from;
@@ -25,9 +26,10 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
 
             GroupHeader = headerGroup;
             IsSerialData = false;
-            headerFromCol = VerifyHeader<DateTime>(headerNameFrom).Key;
-            headerToCol = VerifyHeader<DateTime>(headerNameTo).Key;
-            Rows = CsvToTimeStackRows();
+            headerFrom = headerNameFrom;
+            headerFromCol = VerifyHeader(headerNameFrom).Key;
+            headerToCol = VerifyHeader(headerNameTo).Key;
+            Rows = CsvToTimeStacRowsNew();
         }
 
         /// <summary>
@@ -41,13 +43,14 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
             Csv = csv ?? throw new ArgumentNullException(nameof(csv));
             GroupHeader = headerGroup;
             IsSerialData = true;
-            headerFromCol = VerifyHeader<DateTime>(headerNameTimestamp).Key;
+            headerFrom = headerNameTimestamp;
+            headerFromCol = VerifyHeader(headerNameTimestamp).Key;
             //headerNameFrom = headerNameTimestamp;
             headerToCol = null;
-            Rows = CsvToTimeStackRows();
+            Rows = CsvToTimeStacRowsNew();
         }
 
-
+        /// <summary></summary>
         public string GroupHeader { get; }
 
         internal bool IsSerialData { get; }
@@ -55,7 +58,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
         /// <summary>The start of the segragation. Automtically set from finding the first date in csv. Can be overridden</summary>
         public DateTime From
         {
-            get { return _from ??= (DateTime)Csv.GetColRecords(headerFromCol, false).Min(o => o.Value); }
+            get { return _from ??= Csv.GetColRecords<DateTime>(headerFromCol, false).Min(o => o.Value); }
             set { _from = value; }
         }
 
@@ -67,7 +70,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
                 if (_to == null)
                 {
                     int col = headerToCol != null ? (int)headerToCol : headerFromCol;
-                    _to = (DateTime)Csv.GetColRecords(col, false).Max(o => o.Value);
+                    _to = Csv.GetColRecords<DateTime>(col, false).Max(o => o.Value);
                 }
                 return (DateTime)_to;
             }
@@ -79,7 +82,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
         private List<Row> CsvToTimeStackRows()
         {
             var res = new List<Row>();
-            var fromRows = Csv.GetColRecords<DateTime>(headerFromCol)?.OrderBy(o => o.Value).ToList();
+            List<KeyValuePair<int, DateTime>> fromRows = Csv.GetColRecords<DateTime>(headerFromCol)?.OrderBy(o => o.Value).ToList();
             for (int r = 0; r < Csv.RowLimit.Max; r++)
             {
                 var group = GroupHeader != null ? Csv.GetRecord(fromRows[r].Key, GroupHeader) : null;
@@ -99,47 +102,52 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
             return res;
         }
 
-        //public Dictionary<object, List<Span>> GetSpansPerHour(string groupHeader = null, int fromHour = 0, int toHour = 24, int takHours = 1, int[] weekDays = null)
-        //{
-        //    //if(groupHeader == null)
-        //    //{
-        //    //    var g = SpanArray.PerHour(From, To)
-        //    //}
-        //    //var groups = OrigCsv.GetColRecordsDistinct(groupHeader);
-
-        //    //var a = SpanArray.PerHour(From, To, 
-        //    return default;
-        //}
-
-
-        public Csv GetTimeStackedCsv(List<Span> spans)
+        private List<Row> CsvToTimeStacRowsNew()
         {
-            return TimeStackBuilder.GetTimeStackedCsv(this, spans, Columns);
+            var res = new List<Row>();
+            if (GroupHeader != null)
+            {
+                var groupsRowsDate = Csv.GetColRecordsGrouped<DateTime>(GroupHeader, headerFrom);
+                foreach (var groupRowsDate in groupsRowsDate)
+                    AddRowDates(res, groupRowsDate.Key, groupRowsDate.Value);
+            }
+            else
+            {
+                var rowsDates = Csv.GetColRecords<DateTime>(headerFrom);
+                AddRowDates(res, null, rowsDates);
+            }
+            return res;
         }
 
-        //public Csv GetTimeStackedCsv(TimePartition timePartition)
-        //{
-        //    return TimeStackBuilder.GetTimeStackedCsv(this, timePartition, 0, 24, new int[] {1, 2, 3, 4, 5, 6, 7 });
-        //}
+        private void AddRowDates(List<Row> res, object group, Dictionary<int, DateTime> rowDates)
+        {
+            var rd = rowDates.OrderBy(o => o.Value).ToList();
+            for (int i = 0; i < rd.Count; i++)
+            {
+                var from = rd[i].Value;
+                if (IsSerialData)  //Then rows only has timestamps
+                {
+                    if (i + 1 == rd.Count)
+                        break;
 
-        //public Csv GetTimeStackedCsvPerHour(int fromHour = 0, int toHour = 24, int?[] weekDays = null)
-        //{
-        //    return TimeStackBuilder.GetTimeStackedCsv(this, timePartition, 0, 24, new int[] { 1, 2, 3, 4, 5, 6, 7 });
-        //}
+                    var to = Csv.GetRecord<DateTime>(rd[i].Key + 1, headerFromCol);
+                    res.Add(new Row(Csv, rd[i].Key, rd[i].Key + 1, group, from, to));
+                }
+                else  //Then both From and To are available
+                {
+                    var to = Csv.GetRecord<DateTime>(rd[i].Key, (int)headerToCol);
+                    res.Add(new Row(Csv, rd[i].Key, null, group, from, to));
+                }
+            }
+        }
 
-        //public Csv GetTimeStackedCsv(TimePartition timePartition, int fromHour, int toHour, params int[] weekDays)
-        //{
-        //    return TimeStackBuilder.GetTimeStackedCsv(this, timePartition, fromHour, toHour, weekDays);
-        //}
+        /// <summary>Get csv stacked</summary>
+        public Csv GetTimeStackedCsv(List<Span> spans, Config csvConfig = null)
+        {
+            return TimeStackBuilder.GetTimeStackedCsv(this, spans, Columns, csvConfig);
+        }
 
-
-        //public Csv GetTimeStackedCsv(TimePartition timePartition, int fromHour, int toHour, params int[] weekDays)
-        //{
-        //    return TimeStackBuilder.GetTimeStackedCsv(this, timePartition, fromHour, toHour, weekDays);
-        //}
-
-
-
+        /// <summary></summary>
         public List<Span> GetSpansPerHour(int fromHour = 0, int toHour = 24, int takeHours = 1, int[] weekDays = null)
         {
             var groups = Csv.GetColRecordsDistinct(GroupHeader);
@@ -152,8 +160,33 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
             return spans;
         }
 
+        /// <summary></summary>
+        public List<Span> GetSpansPerDay(int[] weekDays = null)
+        {
+            var groups = Csv.GetColRecordsDistinct(GroupHeader);
+            var spans = SpanArray.PerDay(From, To, groups, weekDays);
 
-        private KeyValuePair<int, string> VerifyHeader<T>(string header)
+            foreach (var row in Rows)
+                foreach (var span in row.Group != null ? spans.Where(o => o.Group.Equals(row.Group)) : spans)
+                    span.TryAddRow(row);
+
+            return spans;
+        }
+
+        /// <summary></summary>
+        public List<Span> GetSpansPerMonth()
+        {
+            var groups = Csv.GetColRecordsDistinct(GroupHeader);
+            var spans = SpanArray.PerMonth(From, To, groups);
+
+            foreach (var row in Rows)
+                foreach (var span in row.Group != null ? spans.Where(o => o.Group.Equals(row.Group)) : spans)
+                    span.TryAddRow(row);
+
+            return spans;
+        }
+
+        private KeyValuePair<int, string> VerifyHeader(string header)
         {
             if (string.IsNullOrEmpty(header))
                 throw new ArgumentNullException(nameof(header));
@@ -161,8 +194,8 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
             if (!Csv.TryGetColId(header, out int col))
                 throw new Exception("Error in reading headerName. A programmer must take care of this issue.");
 
-            if (Csv.ColTypes[col] != typeof(T))
-                throw new Exception($"Error in reading column with headerName '{header}' must only contain {typeof(T).Name}, but it is {Csv.ColTypes[col]}.");
+            if (Csv.ColTypes[col] != typeof(DateTime) && Csv.ColTypes[col] != typeof(DateTimeOffset))
+                throw new Exception($"Error in reading column with headerName '{header}' must only contain 'DateTime' or 'DateTimeOffset', but it is {Csv.ColTypes[col]}.");
 
             return new KeyValuePair<int, string>(col, header);
         }
