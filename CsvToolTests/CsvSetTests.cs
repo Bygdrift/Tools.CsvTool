@@ -10,7 +10,7 @@ namespace CsvToolTests
     [TestClass]
     public class CsvSetTests
     {
-        private Config csvConfig = new Config().AddFormats("d M yyyy, d-M-yyyy, d/M/yyyy, d M yyyy H:m:s, d-M-yyyy H:m:s, d/M/yyyy H:m:s");
+        private Config csvConfig = new Config().AddDateFormats("d M yyyy, d-M-yyyy, d/M/yyyy, d M yyyy H:m:s, d-M-yyyy H:m:s, d/M/yyyy H:m:s");
 
         [TestMethod]
         public void AddHeaders2()

@@ -19,7 +19,7 @@ namespace Bygdrift.Tools.CsvTool
         {
             CultureInfo = CultureInfo.InvariantCulture;
             TimeZoneId = null;
-            FormatKind = FormatKind.Local;
+            DateFormatKind = FormatKind.Local;
         }
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace Bygdrift.Tools.CsvTool
             Delimiter = delimiter;
             CultureInfo = CultureInfo.InvariantCulture;
             TimeZoneId = null;
-            FormatKind = FormatKind.Local;
+            DateFormatKind = FormatKind.Local;
         }
 
 
@@ -39,7 +39,7 @@ namespace Bygdrift.Tools.CsvTool
         {
             CultureInfo = cultureName != null ? CultureInfo.CreateSpecificCulture(cultureName) : CultureInfo.InvariantCulture;
             TimeZoneId = null; // "GMT Standard Time";
-            FormatKind = FormatKind.Local;
+            DateFormatKind = FormatKind.Local;
         }
 
         /// <param name="cultureName">Like 'da-DK' or 'en-US' or 'en-GB' and so on. If null then invariant culture is used</param>
@@ -50,7 +50,7 @@ namespace Bygdrift.Tools.CsvTool
         {
             CultureInfo = cultureName != null ? CultureInfo.CreateSpecificCulture(cultureName) : CultureInfo.InvariantCulture;
             TimeZoneId = timeZoneId;
-            FormatKind = timeFormat;
+            DateFormatKind = timeFormat;
             Delimiter = delimiter;
         }
 
@@ -62,7 +62,7 @@ namespace Bygdrift.Tools.CsvTool
         {
             CultureInfo = cultureInfo;
             TimeZoneInfo = timeZoneInfo;
-            FormatKind = timeFormat;
+            DateFormatKind = timeFormat;
             Delimiter = delimiter;
         }
 
@@ -82,7 +82,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// The list of formats that the date checker verifies agianst. It is posible to add or replace these.
         /// </summary>
-        public List<string> Formats = new()
+        public List<string> DateFormats = new()
         {
             "yyyy M d",
             "yyyy-M-d",
@@ -97,7 +97,7 @@ namespace Bygdrift.Tools.CsvTool
         };
 
         /// <summary>What format datetimes should have</summary>
-        public FormatKind FormatKind { get; set; }
+        public FormatKind DateFormatKind { get; set; }
 
         /// <summary>The name if header is empty</summary>
         public string HeaderNameIfNull { get; set; } = "col";
@@ -149,10 +149,10 @@ namespace Bygdrift.Tools.CsvTool
         /// </summary>
         /// <param name="formats">Like: "yyyy M d H:m:s, s"</param>
         /// <param name="delimiter">The delimitter that splits up the string. Comma by default</param>
-        public Config AddFormats(string formats, char delimiter = ',')
+        public Config AddDateFormats(string formats, char delimiter = ',')
         {
             foreach (var item in Csv.SplitString(formats, delimiter))
-               Formats.Add(item.Value);
+               DateFormats.Add(item.Value);
 
             return this;
         }

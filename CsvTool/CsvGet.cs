@@ -588,7 +588,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="value">The value will be available from here</param>
         public bool TryGetRecord<T>(int row, string headerName, out T value)
         {
-            if(TryGetRecord(row, headerName, out object val))
+            if (TryGetRecord(row, headerName, out object val))
                 if (RecordToType(val, out value))
                     return true;
 

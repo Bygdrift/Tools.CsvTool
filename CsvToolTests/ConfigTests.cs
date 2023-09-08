@@ -20,7 +20,7 @@ namespace CsvToolTests
             var csv = new Csv(null, "Data").AddRow("5,2");
             Assert.AreEqual(csv.Config.CultureInfo, CultureInfo.InvariantCulture);
             Assert.AreEqual(csv.Config.TimeZoneId, null);
-            Assert.AreEqual(csv.Config.FormatKind, FormatKind.Local);
+            Assert.AreEqual(csv.Config.DateFormatKind, FormatKind.Local);
         }
     }
 }

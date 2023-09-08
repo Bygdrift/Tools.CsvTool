@@ -1,6 +1,7 @@
 ﻿using ClosedXML.Excel;
 using DocumentFormat.OpenXml.Spreadsheet;
 using DocumentFormat.OpenXml.Vml;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -22,37 +23,34 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Merges new csv into the returned csv. 
         /// </summary>
-        /// <param name="mergedCsv"></param>
+        /// <param name="csvIn"></param>
         /// <param name="createNewUniqueHeaderIfAlreadyExists">True: If fx value='Id' and exists, a new header will be made, called 'Id_2'. False: If fx value='Id' and exists, then the same id will be returned and no new header will be created</param>
-        public Csv FromCsv(Csv mergedCsv, bool createNewUniqueHeaderIfAlreadyExists)
+        public Csv AddCsv(Csv csvIn, bool createNewUniqueHeaderIfAlreadyExists = false)
         {
-            if (mergedCsv == null || !mergedCsv.Records.Any())
+            if (csvIn == null || !csvIn.Records.Any())
                 return this;
 
-            var csv = GetCsvCopy();
+            if (csvIn.Config == null && Config != null)
+                csvIn.Config = Config;
 
-            if (csv.RowCount == 0 && csv.ColCount == 0)
+            var col = 0;
+            var rowStart = RowLimit.Max + 1;
+            foreach (var header in csvIn.Headers)
             {
-                csv.ColMaxLengths = mergedCsv.ColMaxLengths;
-                csv.ColTypes = mergedCsv.ColTypes;
-                csv.Headers = mergedCsv.Headers;
-                csv.Records = mergedCsv.Records;
-            }
+                var row = rowStart;
+                var origHeader = Headers.SingleOrDefault(o => o.Value.Equals(header.Value));
+                if (origHeader.Value == null)
+                    AddHeader(header.Value, createNewUniqueHeaderIfAlreadyExists, out col);
+                else
+                    col = origHeader.Key;
 
-            var headers = new Dictionary<int, int>();
-            var newRowStart = csv.RowLimit.Max + 1;
-            for (int col = mergedCsv.ColLimit.Min; col <= mergedCsv.ColLimit.Max; col++)
-            {
-                csv.AddHeader(mergedCsv.Headers[col], createNewUniqueHeaderIfAlreadyExists, out int newCol);
-                var newRow = newRowStart;
-                for (int r = mergedCsv.RowLimit.Min; r <= mergedCsv.RowLimit.Max; r++)
+                for (int r = csvIn.RowLimit.Min; r <= csvIn.RowLimit.Max; r++)
                 {
-                    csv.AddRecord(newRow, newCol, mergedCsv.GetRecord(r, col));
-                    newRow++;
+                    AddRecord(row, col, csvIn.GetRecord(r, header.Key));
+                    row++;
                 }
             }
-
-            return csv;
+            return this;
         }
 
         /// <summary>
@@ -62,13 +60,13 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="delimiter"></param>
         /// <param name="take"></param>
         /// <returns></returns>
-        public Csv FromCsvFile(string filePath, char delimiter = ',', int? take = null)
+        public Csv AddCsvFile(string filePath, char delimiter = ',', int? take = null)
         {
             if (!File.Exists(filePath))
                 return default;
 
             using var stream = new FileStream(filePath, FileMode.Open);
-            return FromCsvStream(stream, delimiter, take);
+            return AddCsvStream(stream, delimiter, take);
         }
 
         /// <summary>
@@ -79,35 +77,33 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="take"></param>
         /// <returns></returns>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "<Pending>")]
-        public Csv FromCsvStream(Stream stream, char delimiter = ',', int? take = null)
+        public Csv AddCsvStream(Stream stream, char delimiter = ',', int? take = null)
         {
             if (stream == null || stream.Length == 0)
                 return this;
 
+            var thisIsEmpty = !Records.Any() && !Headers.Any();
             stream.Position = 0;
             using var reader = new StreamReader(stream, leaveOpen: true);
-
             if (delimiter != ',')
             {
                 this.delimiter = delimiter;
 
-                //TODO!
-                //Måske kan jeeg bruge denne: Kilde https://github.com/JoshClose/CsvHelper/blob/master/src/CsvHelper/CsvParser.cs#L304
+                //TODO! Måske kan jeeg bruge denne: Kilde https://github.com/JoshClose/CsvHelper/blob/master/src/CsvHelper/CsvParser.cs#L304
                 // Escape regex special chars to use as regex pattern.
                 //var pattern = Regex.Replace(delimiter, @"([.$^{\[(|)*+?\\])", "\\$1");
 
-
                 csvSplit = new($"(?<=^|{delimiter})(\"(?:[^\"]|\"\")*\"|[^{delimiter}]*)", RegexOptions.Compiled);
             }
-
-            ReadHeader(this, reader.ReadLine());
+            var csvIn = new Csv(this.Config);
+            AddHeader(csvIn, reader.ReadLine());
 
             int row = 1;
             string line;
             while ((line = reader.ReadLine()) != null && (take == null || take != null && row < take))
-                ReadRow(this, line, row++);
+                ReadRow(csvIn, line, row++);
 
-            return this;
+            return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
         }
 
 
@@ -116,42 +112,46 @@ namespace Bygdrift.Tools.CsvTool
         /// </summary>
         /// <param name="dataTable"></param>
         /// <param name="take">If it only shoul be some data that should be loaded, if the data amount is big</param>
-        public Csv FromDataTable(DataTable dataTable, int? take = null)
+        public Csv AddDataTable(DataTable dataTable, int? take = null)
         {
             if (dataTable == null || dataTable.Columns.Count == 0)
                 return this;
 
+            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var csvIn = new Csv(this.Config);
             for (int col = 1; col <= dataTable.Columns.Count; col++)
-                this.AddHeader(col, dataTable.Columns[col - 1].ToString());
+                csvIn.AddHeader(col, dataTable.Columns[col - 1].ToString());
 
             for (int row = 1; row <= dataTable.Rows.Count; row++)
             {
                 var rowItems = dataTable.Rows[row - 1].ItemArray;
                 for (int col = 1; col <= rowItems.Length; col++)
-                    this.AddRecord(row, col, rowItems[col - 1]);
+                    csvIn.AddRecord(row, col, rowItems[col - 1]);
 
                 if (take != null && take == row)
                     break;
             }
-            return this;
+            return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
         }
 
         /// <summary>
         /// Imports Csv from a list.
         /// </summary>
-        public Csv FromModel<T>(IEnumerable<T> source) where T : class
+        public Csv AddModel<T>(IEnumerable<T> source) where T : class
         {
+            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var csvIn = new Csv(this.Config);
             var r = 1;
             foreach (var item in source)
             {
                 foreach (var prop in item.GetType().GetProperties())
                 {
                     var val = prop.GetValue(item, null);
-                    this.AddRecord(r, prop.Name, val);
+                    csvIn.AddRecord(r, prop.Name, val);
                 }
                 r++;
             }
-            return this;
+            return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
         }
 
         /// <summary>
@@ -162,10 +162,10 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="colStart">The start column in the excel pane. Minimum 1</param>
         /// <param name="rowStart">The start row in the excel pane. Minimum 1</param>
         /// <param name="firstRowIsHeader">If the first row continas header values</param>
-        public Csv FromExcelFile(string filePath, int paneNumber = 1, int rowStart = 1, int colStart = 1, bool firstRowIsHeader = true)
+        public Csv AddExcelFile(string filePath, int paneNumber = 1, int rowStart = 1, int colStart = 1, bool firstRowIsHeader = true)
         {
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            return FromExcelStream(stream, paneNumber, colStart, rowStart, firstRowIsHeader);
+            return AddExcelStream(stream, paneNumber, colStart, rowStart, firstRowIsHeader);
         }
 
         /// <summary>
@@ -176,8 +176,10 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="colStart">The start column in the excel pane. Minimum 1</param>
         /// <param name="rowStart">The start row in the excel pane. Minimum 1</param>
         /// <param name="firstRowIsHeader">If the first row continas header values</param>
-        public Csv FromExcelStream(Stream stream, int paneNumber = 1, int colStart = 1, int rowStart = 1, bool firstRowIsHeader = true)
+        public Csv AddExcelStream(Stream stream, int paneNumber = 1, int colStart = 1, int rowStart = 1, bool firstRowIsHeader = true)
         {
+            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var csvIn = new Csv(this.Config);
             var wb = new XLWorkbook(stream);
             if (paneNumber < 1 || paneNumber > wb.Worksheets.Count)
                 return this;
@@ -196,7 +198,7 @@ namespace Bygdrift.Tools.CsvTool
                 {
                     var val = cell.CachedValue;  //By using cached Value, some errors with relation to tables are not thrown as with cell.Value. Furthermore danish punctuation as 1.000,00 are witten as 1000.00
                     if (excelRow == 1 && firstRowIsHeader)
-                        this.AddHeader(csvCol, val.ToString());
+                        csvIn.AddHeader(csvCol, val.ToString());
                     else
                     {
                         if (val.GetType() == typeof(double))
@@ -206,7 +208,7 @@ namespace Bygdrift.Tools.CsvTool
                                 val = valInt;
                         }
 
-                        this.AddRecord(csvRow, csvCol, val);
+                        csvIn.AddRecord(csvRow, csvCol, val);
                         recordAdded = true;
                     }
                     csvCol++;
@@ -216,7 +218,7 @@ namespace Bygdrift.Tools.CsvTool
 
                 excelRow++;
             }
-            return this;
+            return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
         }
 
         /// <summary>
@@ -225,15 +227,17 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="list"></param>
         /// <returns>If list is empty, then an empty csv</returns>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "<Pending>")]
-        public Csv FromExpandoObjects(IEnumerable<dynamic> list)
+        public Csv AddExpandoObjects(IEnumerable<dynamic> list)
         {
             if (!list.Any())
                 return this;
 
+            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var csvIn = new Csv(this.Config);
             int col = 1;
             foreach (KeyValuePair<string, object> item in list.First())
             {
-                this.Headers.Add(col, item.Key.ToString());
+                csvIn.Headers.Add(col, item.Key.ToString());
                 col++;
             }
 
@@ -243,12 +247,12 @@ namespace Bygdrift.Tools.CsvTool
                 col = 1;
                 foreach (var value in cols.Values)
                 {
-                    this.AddRecord(row, col, value);
+                    csvIn.AddRecord(row, col, value);
                     col++;
                 }
                 row++;
             }
-            return this;
+            return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
         }
 
         /// <summary>
@@ -257,15 +261,17 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="json">A string like: "{\"a\":1,\"b\":1}" or "[{\"a\":1,\"b\":1},{\"b\":1},{\"a\":1}]"</param>
         /// <param name="convertArraysToStrings">True: arrays are converted to a single string. False: They are split out and gets each a column</param>
         /// <returns></returns>
-        public Csv FromJson(string json, bool convertArraysToStrings)
+        public Csv AddJson(string json, bool convertArraysToStrings)
         {
+            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var csvIn = new Csv(this.Config);
             var jToken = JToken.Parse(json);
-            var rowStart = this.RowLimit.Max + jToken.Type == JTokenType.Array ? 0 : 1;
-            FromJsonSub(jToken.Children(), rowStart, convertArraysToStrings);
-            return this;
+            var rowStart = csvIn.RowLimit.Max + jToken.Type == JTokenType.Array ? 0 : 1;
+            FromJsonSub(jToken.Children(), rowStart, convertArraysToStrings, csvIn);
+            return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
         }
 
-        private void FromJsonSub(IEnumerable<JToken> jTokens, int row, bool convertArraysToStrings)
+        private void FromJsonSub(IEnumerable<JToken> jTokens, int row, bool convertArraysToStrings, Csv csvIn)
         {
             foreach (JToken item in jTokens)
             {
@@ -275,10 +281,10 @@ namespace Bygdrift.Tools.CsvTool
                 if (item.Type == JTokenType.Array)
                 {
                     var value = item.ToString().Replace("\r\n", string.Empty).TrimStart('[').TrimEnd(']').Trim();
-                    this.AddRecord(row, item.Path, value);
+                    csvIn.AddRecord(row, item.Path, value);
                 }
                 else if (item.Children().Any())
-                    FromJsonSub(item.Children(), row, convertArraysToStrings);
+                    FromJsonSub(item.Children(), row, convertArraysToStrings, csvIn);
                 else
                 {
                     var path = item.Path;
@@ -288,7 +294,7 @@ namespace Bygdrift.Tools.CsvTool
                         if (end != -1)
                             path = path.Substring(end + 1);
                     }
-                    this.AddRecord(row, path, ((JValue)item).Value);
+                    csvIn.AddRecord(row, path, ((JValue)item).Value);
                 }
             }
         }
@@ -299,12 +305,14 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="o">An object like a class with poperties</param>
         /// <param name="convertArraysToStrings">True: arrays are converted to a single string. False: They are split out and gets each a column</param>
         /// <returns></returns>
-        public Csv FromObject(object o, bool convertArraysToStrings)
+        public Csv AddObject(object o, bool convertArraysToStrings)
         {
+            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var csvIn = new Csv(this.Config);
             var jToken = JToken.FromObject(o);
             var rowStart = jToken.Type == JTokenType.Array ? 0 : 1;
-            FromJsonSub(jToken.Children(), rowStart, convertArraysToStrings);
-            return this;
+            FromJsonSub(jToken.Children(), rowStart, convertArraysToStrings, csvIn);
+            return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
         }
 
         private void ReadRow(Csv csv, string input, int row)
@@ -358,7 +366,7 @@ namespace Bygdrift.Tools.CsvTool
 
 
         /// <returns>False if last record starts with " but don't end with one - then it must be truncated with the next line</returns>
-        private void ReadHeader(Csv csv, string input)
+        private void AddHeader(Csv csv, string input)
         {
             if (string.IsNullOrEmpty(input))
                 return;

@@ -54,19 +54,19 @@ Inside a Csv class, you can see each column type. From previous example, both Id
 Import data and convert to csv:
 
 ```c#
-Csv csv = new Csv().FromCsvFile(filePath);
+Csv csv = new Csv().AddCsvFile(filePath);
 
-Csv csv = new Csv().FromCsvStream(stream);
+Csv csv = new Csv().AddCsvStream(stream);
 
-Csv csv = new Csv().FromDataTable(dataTable);
+Csv csv = new Csv().AddDataTable(dataTable);
 
-Csv csv = new Csv().FromExcelFile(filePath, paneNumber, rowStart, colStart);
+Csv csv = new Csv().AddExcelFile(filePath, paneNumber, rowStart, colStart);
 
-Csv csv = new Csv().FromExcelStream(stream, paneNumber, rowStart, colStart);
+Csv csv = new Csv().AddExcelStream(stream, paneNumber, rowStart, colStart);
 
-Csv csv = new Csv().FromExpandoObjects(expandoObjects);
+Csv csv = new Csv().AddExpandoObjects(expandoObjects);
 
-Csv csv = new Csv().FromJson(jsonString);
+Csv csv = new Csv().AddJson(jsonString);
 ```
 
 ## Build csv:
@@ -191,13 +191,13 @@ string json = csv.ToJson();
 
 ```c#
 //Convert a json string to csv:
-new Csv().FromJson("[{\"a\":1,\"b\":2},{\"b\":3},{\"a\":4}]");
+new Csv().AddJson("[{\"a\":1,\"b\":2},{\"b\":3},{\"a\":4}]");
 
 //Convert a csv file to Excel:
-new Csv().FromCsvFile(path).ToExcelFile(Path, paneName);
+new Csv().AddCsvFile(path).ToExcelFile(Path, paneName);
 
 //Convert a csv file to json:
-string json = new Csv().FromCsvFile(path).ToJson();
+string json = new Csv().AddCsvFile(path).ToJson();
 ```
 
 ### There are more functions inside.
@@ -207,6 +207,20 @@ string json = new Csv().FromCsvFile(path).ToJson();
 For information or consultant hours, please write to bygdrift@gmail.com.
 
 # Updates
+
+## 1.1.2
+Breaking changes: The following methods has changed names: FromCsvFile => AddCsvFile, FromCsvStream => AddCsvStream, FromDataTable => AddDataTable, FromExcelFile => AddExcelFile, FromExcelStream => AddExcelStream, FromExpandoObjects => AddExpandoObjects, FromJson => AddJson.
+Now they all can add data to an existing csv like:
+```c#
+Csv csv = new Csv("Id, Name").AddRows("A, Anders");
+Csv csvIn = new Csv("Id, Name").AddRows("B, Bo");
+csv.AddCsv(csvIn);
+```
+And csv equals:
+| Id | Name   |
+|----|--------|
+| A  | Anders |
+| B  | Bo     |
 
 ## 1.0.2
 Added ability to handle Culture with new Csv().Culture();

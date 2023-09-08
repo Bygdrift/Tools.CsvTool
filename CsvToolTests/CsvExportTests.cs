@@ -13,7 +13,7 @@ namespace CsvToolTests
         /// <summary>Path to project base</summary>
         private readonly string basePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..\\..\\..\\"));
 
-        private Config csvConfig = new Config().AddFormats("d M yyyy, d-M-yyyy, d/M/yyyy, d M yyyy H:m:s, d-M-yyyy H:m:s, d/M/yyyy H:m:s");
+        private Config csvConfig = new Config().AddDateFormats("d M yyyy, d-M-yyyy, d/M/yyyy, d M yyyy H:m:s, d-M-yyyy H:m:s, d/M/yyyy H:m:s");
 
         [TestMethod]
         public void ToCsvFile()
@@ -31,14 +31,16 @@ namespace CsvToolTests
             var csv = new Csv(csvConfig, "Date").AddRow("2022-03-10T10:01:53.000+01:00");
             var csvDate = csv.GetRecord<DateTime>(1, 1);
             var json = csv.ToJson(true);
-            var newCsv = new Csv().FromJson(json, false);
+            var newCsv = new Csv().AddJson(json, false);
             var newCsvdate = newCsv.GetRecord(1, 1);
             Assert.AreEqual(csvDate, newCsvdate);
         }
 
         [TestMethod]
-        public void ToCsvStream()
+        public void AddFromCsvStream()
         {
+            //var csvConfig = new Config().AddDateFormats("d M yyyy, d-M-yyyy, d/M/yyyy, d M yyyy H:m:s, d-M-yyyy H:m:s, d/M/yyyy H:m:s");
+
             var csv = new Csv(csvConfig, "Id, Data, Date");
             csv.AddRecord(1, 1, 1);
             csv.AddRecord(1, 2, "A\nB");
@@ -49,7 +51,7 @@ namespace CsvToolTests
 
             var stream = csv.ToCsvStream();
 
-            var csvFromReader = new Csv().FromCsvStream(stream);
+            var csvFromReader = new Csv().AddCsvStream(stream);
             Assert.IsTrue(csvFromReader.ColLimit.Equals((1, 3)));
             Assert.IsTrue(csvFromReader.RowLimit.Equals((1, 1)));
             Assert.IsTrue(csvFromReader.Records[(1, 1)].Equals(1));
@@ -57,6 +59,11 @@ namespace CsvToolTests
             Assert.AreEqual(csvFromReader.ColTypes[1], typeof(int));
             Assert.AreEqual(csvFromReader.ColTypes[2], typeof(string));
             Assert.AreEqual(csvFromReader.ColTypes[3], typeof(DateTime));
+
+            csv = new Csv("a,b,c").AddRows("a,b,c", "A,B,C", "AA, BB, CC");
+            csvFromReader = csv.AddCsvStream(stream);
+            Assert.AreEqual(4, csv.RowCount);
+            Assert.AreEqual(12, csv.Records.Count);
         }
 
         [TestMethod]
@@ -107,7 +114,7 @@ namespace CsvToolTests
         {
             var csv = new Csv("Id, Age").AddRow(5.2, 1).AddRow(2, 8);
             using var stream = csv.ToExcelStream("Data");
-            var csvOut = new Csv().FromExcelStream(stream);
+            var csvOut = new Csv().AddExcelStream(stream);
             Assert.AreEqual(csv.ToJson(), csvOut.ToJson());
         }
 

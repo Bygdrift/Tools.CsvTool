@@ -159,7 +159,7 @@ namespace CsvToolTests.TimeStacking
         [TestMethod]
         public void DataFromHFORS()
         {
-            var csvFromFtp = new Csv().FromCsvFile(Path.Combine(BasePath, "Files", "HFORS", "In", "csvFromFtp.csv"));
+            var csvFromFtp = new Csv().AddCsvFile(Path.Combine(BasePath, "Files", "HFORS", "In", "csvFromFtp.csv"));
             var csvFromFtpFiltered = csvFromFtp.FilterRows("Målernummer", true, 65674941);
             csvFromFtpFiltered.ToCsvFile(Path.Combine(BasePath, "Files", "HFORS", "Out", "csvFromFtpFiltered.csv"));
 

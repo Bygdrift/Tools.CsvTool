@@ -41,13 +41,13 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         /// <summary>Returns dateTimeOffset as decriped in config. </summary>
         public DateTimeOffset Now()
         {
-            return Now(config.FormatKind);
+            return Now(config.DateFormatKind);
         }
 
         /// <summary>Returns dateTimeOffset as decriped in config. </summary>
         public DateTimeOffset Now(DateTimeOffset utcNow)
         {
-            return Now(config.FormatKind, utcNow);
+            return Now(config.DateFormatKind, utcNow);
         }
 
         /// <summary>Returns dateTimeOffset as decriped in formatKind </summary>
@@ -82,17 +82,17 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         /// <summary>Returns dateTime as a string as decriped in config. </summary>
         public string DateTimeToString(DateTime dateTime)
         {
-            if (config.FormatKind == FormatKind.Universal)
+            if (config.DateFormatKind == FormatKind.Universal)
             {
                 var utc = config.TimeZoneInfo != null ? TimeZoneInfo.ConvertTimeFromUtc(dateTime, config.TimeZoneInfo) : dateTime.ToUniversalTime();
                 return utc.ToString(formatUtc);
             }
-            if (config.FormatKind == FormatKind.TimeOffsetUTC || config.FormatKind == FormatKind.TimeOffsetDST)
+            if (config.DateFormatKind == FormatKind.TimeOffsetUTC || config.DateFormatKind == FormatKind.TimeOffsetDST)
             {
                 var time = ToDateTimeOffset(dateTime);
                 return time.ToString(formatOffset);
             }
-            if (config.FormatKind == FormatKind.Local)
+            if (config.DateFormatKind == FormatKind.Local)
                 return dateTime.ToString(formatLocal);
             else
                 throw new Exception();
@@ -103,9 +103,9 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         /// </summary>
         public string DateTimeToString(DateTimeOffset dateTimeOffset)
         {
-            if (config.FormatKind == FormatKind.Universal)
+            if (config.DateFormatKind == FormatKind.Universal)
                 return dateTimeOffset.ToUniversalTime().ToString(formatUtc);
-            if (config.FormatKind == FormatKind.TimeOffsetUTC || config.FormatKind == FormatKind.TimeOffsetDST)
+            if (config.DateFormatKind == FormatKind.TimeOffsetUTC || config.DateFormatKind == FormatKind.TimeOffsetDST)
                 return dateTimeOffset.ToString(formatOffset);
             else
                 return dateTimeOffset.ToString(formatLocal);
@@ -129,9 +129,9 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         {
             if (config.TimeZoneInfo != null)
             {
-                if (config.FormatKind == FormatKind.TimeOffsetDST)
+                if (config.DateFormatKind == FormatKind.TimeOffsetDST)
                     return config.TimeZoneInfo.GetUtcOffset(dateTime);
-                if (config.FormatKind == FormatKind.TimeOffsetUTC)
+                if (config.DateFormatKind == FormatKind.TimeOffsetUTC)
                     return config.TimeZoneInfo.BaseUtcOffset;
             }
             return default;
@@ -144,11 +144,11 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         {
             get
             {
-                if (config.FormatKind == FormatKind.Universal)
+                if (config.DateFormatKind == FormatKind.Universal)
                     return 20;
-                if (config.FormatKind == FormatKind.TimeOffsetUTC || config.FormatKind == FormatKind.TimeOffsetDST)
+                if (config.DateFormatKind == FormatKind.TimeOffsetUTC || config.DateFormatKind == FormatKind.TimeOffsetDST)
                     return 25;  //2022-06-01T12:00:00+02:00
-                if (config.FormatKind == FormatKind.Local)
+                if (config.DateFormatKind == FormatKind.Local)
                     return 19;
                 else
                     throw new Exception();
@@ -176,12 +176,12 @@ namespace Bygdrift.Tools.CsvTool.Helpers
                     if (TryParse(valueAsString, item, out value))
                         return true;
 
-                foreach (var item in config.Formats)
+                foreach (var item in config.DateFormats)
                 {
                     if (TryParse(valueAsString, item, out value))
                     {
                         DateFormatsUsed.Add(item);
-                        config.Formats.Remove(item);
+                        config.DateFormats.Remove(item);
                         return true;
                     }
                 }
