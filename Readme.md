@@ -54,6 +54,9 @@ Inside a Csv class, you can see each column type. From previous example, both Id
 Import data and convert to csv:
 
 ```c#
+//Add a csv into another csv:
+Csv csv = new Csv("Id, Name").AddRows("A, Anders").AddCsv(new Csv("Id, Name").AddRows("B, Bo"));
+
 Csv csv = new Csv().AddCsvFile(filePath);
 
 Csv csv = new Csv().AddCsvStream(stream);
