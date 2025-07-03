@@ -11,14 +11,14 @@ using System.Linq;
 namespace CsvToolTests.TimeStacking
 {
     [TestClass]
-    public class DrawDigram
+    public class DrawDiagram
     {
         public static readonly string BasePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..\\..\\..\\"));
         private readonly Plot plt;
         private readonly string fileName;
         private int lineNumber = 1;
 
-        public DrawDigram(int width, int height, string filename)
+        public DrawDiagram(int width, int height, string filename)
         {
             this.fileName = filename;
             plt = new(width, height);
@@ -80,8 +80,11 @@ namespace CsvToolTests.TimeStacking
             plt.YAxis.MinorGrid(false);
             plt.XAxis.DateTimeFormat(true);
             plt.Style(Style.Black);
-            var path = Path.Combine(BasePath, "Files", "Out", fileName);
-            plt.SaveFig(path);
+            var path = Path.Combine(BasePath, "Files", "Out");
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            plt.SaveFig(Path.Combine(path, fileName));
         }
     }
 

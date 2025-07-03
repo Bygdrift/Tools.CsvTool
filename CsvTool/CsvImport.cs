@@ -1,4 +1,6 @@
 ﻿using ClosedXML.Excel;
+using CsvTool.Attributes;
+using DocumentFormat.OpenXml.Drawing;
 using DocumentFormat.OpenXml.Spreadsheet;
 using DocumentFormat.OpenXml.Vml;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -146,8 +148,11 @@ namespace Bygdrift.Tools.CsvTool
             {
                 foreach (var prop in item.GetType().GetProperties())
                 {
-                    var val = prop.GetValue(item, null);
-                    csvIn.AddRecord(r, prop.Name, val);
+                    if (!prop.GetCustomAttributes(true).OfType<CsvIgnore>().Any())
+                    {
+                        var val = prop.GetValue(item, null);
+                        csvIn.AddRecord(r, prop.Name, val);
+                    }
                 }
                 r++;
             }
@@ -203,7 +208,7 @@ namespace Bygdrift.Tools.CsvTool
                     {
                         if (val.GetType() == typeof(double))
                         {
-                            var valInt = Convert.ToInt32(val);
+                            var valInt = Convert.ToInt64(val);
                             if (valInt == (double)val)
                                 val = valInt;
                         }
@@ -263,9 +268,19 @@ namespace Bygdrift.Tools.CsvTool
         /// <returns></returns>
         public Csv AddJson(string json, bool convertArraysToStrings)
         {
+            return AddJson(JToken.Parse(json), convertArraysToStrings);
+        }
+
+        /// <summary>
+        /// Converts a json string into a CSV.
+        /// </summary>
+        /// <param name="jToken">A jToken like: "{\"a\":1,\"b\":1}" or "[{\"a\":1,\"b\":1},{\"b\":1},{\"a\":1}]"</param>
+        /// <param name="convertArraysToStrings">True: arrays are converted to a single string. False: They are split out and gets each a column</param>
+        /// <returns></returns>
+        public Csv AddJson(JToken jToken, bool convertArraysToStrings)
+        {
             var thisIsEmpty = !Records.Any() && !Headers.Any();
             var csvIn = new Csv(this.Config);
-            var jToken = JToken.Parse(json);
             var rowStart = csvIn.RowLimit.Max + jToken.Type == JTokenType.Array ? 0 : 1;
             FromJsonSub(jToken.Children(), rowStart, convertArraysToStrings, csvIn);
             return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
@@ -285,18 +300,26 @@ namespace Bygdrift.Tools.CsvTool
                 }
                 else if (item.Children().Any())
                     FromJsonSub(item.Children(), row, convertArraysToStrings, csvIn);
-                else
+                else if (item.Type == JTokenType.Object)  //Sker kun ved "{{}}".
                 {
-                    var path = item.Path;
-                    if (path.StartsWith('['))
-                    {
-                        var end = path.IndexOf('.');
-                        if (end != -1)
-                            path = path.Substring(end + 1);
-                    }
-                    csvIn.AddRecord(row, path, ((JValue)item).Value);
+                    //Gør ikke noget
                 }
+                else
+                    csvIn.AddRecord(row, GetPath(item), ((JValue)item).Value);
             }
+        }
+
+        private static string GetPath(JToken item)
+        {
+            var path = item.Path;
+            if (path.StartsWith('['))
+            {
+                var end = path.IndexOf('.');
+                if (end != -1)
+                    path = path.Substring(end + 1);
+            }
+
+            return path;
         }
 
         /// <summary>

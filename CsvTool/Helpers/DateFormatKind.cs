@@ -1,7 +1,7 @@
 ﻿namespace Bygdrift.Tools.CsvTool
 {
     /// <summary>What format datetimes should have</summary>
-    public enum FormatKind
+    public enum DateFormatKind
     {
         /// <summary>Like: 2022-08-17T06:57:03</summary>
         Local,

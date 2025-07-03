@@ -19,7 +19,7 @@ namespace Bygdrift.Tools.CsvTool
         {
             CultureInfo = CultureInfo.InvariantCulture;
             TimeZoneId = null;
-            DateFormatKind = FormatKind.Local;
+            DateFormatKind = DateFormatKind.Local;
         }
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace Bygdrift.Tools.CsvTool
             Delimiter = delimiter;
             CultureInfo = CultureInfo.InvariantCulture;
             TimeZoneId = null;
-            DateFormatKind = FormatKind.Local;
+            DateFormatKind = DateFormatKind.Local;
         }
 
 
@@ -39,14 +39,14 @@ namespace Bygdrift.Tools.CsvTool
         {
             CultureInfo = cultureName != null ? CultureInfo.CreateSpecificCulture(cultureName) : CultureInfo.InvariantCulture;
             TimeZoneId = null; // "GMT Standard Time";
-            DateFormatKind = FormatKind.Local;
+            DateFormatKind = DateFormatKind.Local;
         }
 
         /// <param name="cultureName">Like 'da-DK' or 'en-US' or 'en-GB' and so on. If null then invariant culture is used</param>
         /// <param name="timeZoneId">Like: 'Romance Standard Time'. If null, then local time zone is used.  Get timeZoneId from here: https://raw.githubusercontent.com/Bygdrift/Warehouse/master/Docs/TimeZoneIds.csv</param>
         /// <param name="timeFormat"></param>
         /// <param name="delimiter"></param>
-        public Config(string cultureName, string timeZoneId, FormatKind timeFormat, char delimiter = ',')
+        public Config(string cultureName, string timeZoneId, DateFormatKind timeFormat, char delimiter = ',')
         {
             CultureInfo = cultureName != null ? CultureInfo.CreateSpecificCulture(cultureName) : CultureInfo.InvariantCulture;
             TimeZoneId = timeZoneId;
@@ -58,7 +58,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="timeZoneInfo">Like: 'Romance Standard Time'. If null, then local time zone is used. Get timeZoneId from here: https://raw.githubusercontent.com/Bygdrift/Warehouse/master/Docs/TimeZoneIds.csv</param>
         /// <param name="timeFormat"></param>
         /// <param name="delimiter"></param>
-        public Config(CultureInfo cultureInfo, TimeZoneInfo timeZoneInfo, FormatKind timeFormat, char delimiter = ',')
+        public Config(CultureInfo cultureInfo, TimeZoneInfo timeZoneInfo, DateFormatKind timeFormat, char delimiter = ',')
         {
             CultureInfo = cultureInfo;
             TimeZoneInfo = timeZoneInfo;
@@ -97,7 +97,7 @@ namespace Bygdrift.Tools.CsvTool
         };
 
         /// <summary>What format datetimes should have</summary>
-        public FormatKind DateFormatKind { get; set; }
+        public DateFormatKind DateFormatKind { get; set; }
 
         /// <summary>The name if header is empty</summary>
         public string HeaderNameIfNull { get; set; } = "col";

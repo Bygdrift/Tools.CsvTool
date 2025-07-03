@@ -35,7 +35,7 @@ namespace CsvToolTests.Helpers
 
             //var time = new DateTimeOffset(2022, 12, 1, 12, 0, 0, new TimeSpan(2, 0, 0));
             var a = time.ToLocalTime();
-            var csv = new Csv(new Config(null, "Romance Standard Time", FormatKind.TimeOffsetUTC));
+            var csv = new Csv(new Config(null, "Romance Standard Time", DateFormatKind.TimeOffsetUTC));
             var h1 = csv.Config.DateHelper.ToDateTimeOffset(time);
             var h2 = csv.Config.DateHelper.DateTimeToString(time);
 
@@ -58,15 +58,15 @@ namespace CsvToolTests.Helpers
             TimeZoneInfo zone = TimeZoneInfo.FindSystemTimeZoneById("Romance Standard Time");
             DateTime localDateTime = TimeZoneInfo.ConvertTimeFromUtc(utc, zone);
 
-            Assert.AreEqual("2022-12-01T12:00:00+01:00", new Csv(new Config(null, "Romance Standard Time", FormatKind.TimeOffsetUTC)).Config.DateHelper.DateTimeToString(time));
+            Assert.AreEqual("2022-12-01T12:00:00+01:00", new Csv(new Config(null, "Romance Standard Time", DateFormatKind.TimeOffsetUTC)).Config.DateHelper.DateTimeToString(time));
 
-            Assert.AreEqual("2022-12-01T12:00:00", new Csv(new Config(null, "Central America Standard Time", FormatKind.Local)).Config.DateHelper.DateTimeToString(time));
-            Assert.AreEqual("2022-12-01T06:00:00Z", new Csv(new Config(null, "Central America Standard Time", FormatKind.Universal)).Config.DateHelper.DateTimeToString(time));
-            Assert.AreEqual("2022-12-01T12:00:00-06:00", new Csv(new Config(null, "Central America Standard Time", FormatKind.TimeOffsetUTC)).Config.DateHelper.DateTimeToString(time));
+            Assert.AreEqual("2022-12-01T12:00:00", new Csv(new Config(null, "Central America Standard Time", DateFormatKind.Local)).Config.DateHelper.DateTimeToString(time));
+            Assert.AreEqual("2022-12-01T06:00:00Z", new Csv(new Config(null, "Central America Standard Time", DateFormatKind.Universal)).Config.DateHelper.DateTimeToString(time));
+            Assert.AreEqual("2022-12-01T12:00:00-06:00", new Csv(new Config(null, "Central America Standard Time", DateFormatKind.TimeOffsetUTC)).Config.DateHelper.DateTimeToString(time));
 
-            Assert.AreEqual("2022-12-01T12:00:00", new Csv(new Config(null, "Romance Standard Time", FormatKind.Local)).Config.DateHelper.DateTimeToString(time));
-            Assert.AreEqual("2022-12-01T13:00:00Z", new Csv(new Config(null, "Romance Standard Time", FormatKind.Universal)).Config.DateHelper.DateTimeToString(time));
-            Assert.AreEqual("2022-12-01T12:00:00+01:00", new Csv(new Config(null, "Romance Standard Time", FormatKind.TimeOffsetUTC)).Config.DateHelper.DateTimeToString(time));
+            Assert.AreEqual("2022-12-01T12:00:00", new Csv(new Config(null, "Romance Standard Time", DateFormatKind.Local)).Config.DateHelper.DateTimeToString(time));
+            Assert.AreEqual("2022-12-01T13:00:00Z", new Csv(new Config(null, "Romance Standard Time", DateFormatKind.Universal)).Config.DateHelper.DateTimeToString(time));
+            Assert.AreEqual("2022-12-01T12:00:00+01:00", new Csv(new Config(null, "Romance Standard Time", DateFormatKind.TimeOffsetUTC)).Config.DateHelper.DateTimeToString(time));
 
             var timeOffset = new DateTimeOffset(2022, 6, 1, 12, 0, 0, new TimeSpan(1, 0, 0));
         }
@@ -75,10 +75,10 @@ namespace CsvToolTests.Helpers
         public void NowTest()
         {
             var utcNow = new DateTime(2022, 6, 1, 12, 0, 0).ToUniversalTime();
-            Assert.AreEqual("2022-06-01T12:00:00+02:00", new Config(null, "Romance Standard Time", FormatKind.Local).DateHelper.Now(utcNow).ToString("yyyy-MM-ddTHH:mm:sszzz"));
-            Assert.AreEqual("2022-06-01T10:00:00+00:00", new Config(null, "Romance Standard Time", FormatKind.Universal).DateHelper.Now(utcNow).ToString("yyyy-MM-ddTHH:mm:sszzz"));
-            Assert.AreEqual("2022-06-01T12:00:00+02:00", new Config(null, "Romance Standard Time", FormatKind.TimeOffsetDST).DateHelper.Now(utcNow).ToString("yyyy-MM-ddTHH:mm:sszzz"));
-            Assert.AreEqual("2022-06-01T12:00:00+01:00", new Config(null, "Romance Standard Time", FormatKind.TimeOffsetUTC).DateHelper.Now(utcNow).ToString("yyyy-MM-ddTHH:mm:sszzz"));
+            Assert.AreEqual("2022-06-01T12:00:00+02:00", new Config(null, "Romance Standard Time", DateFormatKind.Local).DateHelper.Now(utcNow).ToString("yyyy-MM-ddTHH:mm:sszzz"));
+            Assert.AreEqual("2022-06-01T10:00:00+00:00", new Config(null, "Romance Standard Time", DateFormatKind.Universal).DateHelper.Now(utcNow).ToString("yyyy-MM-ddTHH:mm:sszzz"));
+            Assert.AreEqual("2022-06-01T12:00:00+02:00", new Config(null, "Romance Standard Time", DateFormatKind.TimeOffsetDST).DateHelper.Now(utcNow).ToString("yyyy-MM-ddTHH:mm:sszzz"));
+            Assert.AreEqual("2022-06-01T12:00:00+01:00", new Config(null, "Romance Standard Time", DateFormatKind.TimeOffsetUTC).DateHelper.Now(utcNow).ToString("yyyy-MM-ddTHH:mm:sszzz"));
         }
     }
 }

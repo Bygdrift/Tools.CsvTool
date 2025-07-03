@@ -64,7 +64,7 @@ namespace Bygdrift.Tools.CsvTool
             }
             if (Config.DateHelper.TryParseDateTime(value, out DateTime dateValue))
             {
-                if (Config.DateFormatKind == FormatKind.TimeOffsetUTC || Config.DateFormatKind == FormatKind.TimeOffsetDST)
+                if (Config.DateFormatKind == DateFormatKind.TimeOffsetUTC || Config.DateFormatKind == DateFormatKind.TimeOffsetDST)
                 {
                     value = Config.DateHelper.ToDateTimeOffset(dateValue);
                     return (typeof(DateTimeOffset), Config.DateHelper.DateTimeLength);
@@ -127,7 +127,7 @@ namespace Bygdrift.Tools.CsvTool
                 value = dateOffsetValue;
                 return (true, Config.DateHelper.DateTimeLength);
             }
-            if (type == typeof(DateTime) && (Config.DateFormatKind == FormatKind.TimeOffsetUTC || Config.DateFormatKind == FormatKind.TimeOffsetDST) && Config.DateHelper.TryParseDateTime(value, out DateTime dateValue))
+            if (type == typeof(DateTime) && (Config.DateFormatKind == DateFormatKind.TimeOffsetUTC || Config.DateFormatKind == DateFormatKind.TimeOffsetDST) && Config.DateHelper.TryParseDateTime(value, out DateTime dateValue))
             {
                 //if (Config.TimeZoneInfo == null)
                 //    value = dateValue;

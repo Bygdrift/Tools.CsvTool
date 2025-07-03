@@ -169,6 +169,10 @@ namespace CsvToolTests
             var res4 = new Csv().AddJson("[{\"a\":1,\"b\":1,\"location\":{\"type\":\"Point\",\"coordinates\":[11.260,55.640562442]}},{\"b\":1},{\"a\":1}]", false);
             var output4 = res4.ToCsvString();
             Assert.AreEqual("a,b,location.type,[0].location.coordinates\n1,1,Point,\"11.26,  55.640562442\"\n,1,,\n1,,,\n", output4);
+
+            var res5 = new Csv().AddJson("{\"a\":{}}", false);
+            var output5 = res5.ToCsvString();
+            Assert.AreEqual("a\n", output5);
         }
 
         [TestMethod]
@@ -176,8 +180,8 @@ namespace CsvToolTests
         {
             var data = new List<ModelTest>
             {
-                new ModelTest{Number = 30, Text = "Test1"},
-                new ModelTest{Number = 50, Text = "Test2"},
+                new ModelTest{ Number = 30, Text = "Test1", ValueToIgnore = "Hey" },
+                new ModelTest{ Number = 50, Text = "Test2", ValueToIgnore = "Hey" },
             };
 
             var csv = new Csv().AddModel(data);

@@ -148,10 +148,27 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
         }
 
         /// <summary></summary>
+        public List<Span> GetSpansPerHour(DateTime fromLimit, DateTime toLimit, int takeHours = 1, int[] weekDays = null)
+        {
+            fromLimit = new DateTime(fromLimit.Year, fromLimit.Month, fromLimit.Day, fromLimit.Hour, 0, 0);
+            toLimit = new DateTime(toLimit.Year, toLimit.Month, toLimit.Day, toLimit.Hour, 0, 0);
+
+            var groups = Csv.GetColRecordsDistinct(GroupHeader);
+            var spans = SpanArray.PerHour(From, To, fromLimit, toLimit, groups, takeHours, weekDays);
+
+            foreach (var row in Rows)
+                foreach (var span in row.Group != null ? spans.Where(o => o.Group.Equals(row.Group)) : spans)
+                    span.TryAddRow(row);
+
+            return spans;
+        }
+
+
+        /// <summary></summary>
         public List<Span> GetSpansPerHour(int fromHour = 0, int toHour = 24, int takeHours = 1, int[] weekDays = null)
         {
             var groups = Csv.GetColRecordsDistinct(GroupHeader);
-            var spans = SpanArray.PerHour(From, To, groups, fromHour, toHour, weekDays);
+            var spans = SpanArray.PerHour(From, To, fromHour, toHour, groups, takeHours, weekDays);
 
             foreach (var row in Rows)
                 foreach (var span in row.Group != null ? spans.Where(o => o.Group.Equals(row.Group)) : spans)

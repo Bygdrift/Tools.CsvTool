@@ -27,7 +27,7 @@ namespace CsvToolTests.TimeStacking
             var spans = timeStack.GetSpansPerHour();
             var csv = timeStack.GetTimeStackedCsv(spans);
 
-            new DrawDigram(1200, 400, "SampImag.png").DrawTimeStack(spans, true);
+            new DrawDiagram(1200, 400, "SampImag.png").DrawTimeStack(spans, true);
             TraceOutput.Output(timeStack);
             Assert.AreEqual(csv.RowCount, 1);
             Assert.AreEqual(csv.GetRecord(1, 1), 0.91666666666666663);
@@ -54,7 +54,7 @@ namespace CsvToolTests.TimeStacking
             var spans = timeStack.GetSpansPerHour();
             var csv = timeStack.GetTimeStackedCsv(spans);
 
-            new DrawDigram(1200, 600, "SampImag.png").DrawTimeStack(spans, false);
+            new DrawDiagram(1200, 600, "SampImag.png").DrawTimeStack(spans, false);
             Assert.AreEqual(csv.RowCount, 7);
             Assert.AreEqual(csv.GetRecord(1, 1), 0.5);
             Assert.AreEqual(csv.GetRecord(2, 1), 0.33333333333333331);
@@ -80,7 +80,7 @@ namespace CsvToolTests.TimeStacking
             var spans = timeStack.GetSpansPerHour();
             var csv = timeStack.GetTimeStackedCsv(spans);
 
-            new DrawDigram(1200, 400, "SampImag.png").DrawTimeStack(spans, true);
+            new DrawDiagram(1200, 400, "SampImag.png").DrawTimeStack(spans, true);
             TraceOutput.Output(timeStack);
 
             Assert.AreEqual(csv.Records.Count, 4);

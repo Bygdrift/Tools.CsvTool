@@ -42,7 +42,7 @@ namespace CsvToolTests.TimeStacking
                 .AddCalcSum("Data", "Sum", true);
 
             var spans = timeStack.GetSpansPerHour();
-            new DrawDigram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
+            new DrawDiagram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
             var csv = timeStack.GetTimeStackedCsv(spans);
             TraceOutput.Output(timeStack, 3);
         }
@@ -61,7 +61,7 @@ namespace CsvToolTests.TimeStacking
                 .AddCalcAverageWeighted("Data", "DataAvgW");
 
             var spans = timeStack.GetSpansPerHour();
-            new DrawDigram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
+            new DrawDiagram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
             var csv = timeStack.GetTimeStackedCsv(spans);
             Assert.AreEqual(csv.GetRecord(1, 1), 11.25d);
             Assert.AreEqual(csv.GetRecord(1, 2), 1.6666666666666665d);
@@ -70,7 +70,7 @@ namespace CsvToolTests.TimeStacking
         [TestMethod]
         public void SerielDataAverageWeightedWithCsvConfig()
         {
-            var config = new Config(null, "Central America Standard Time", FormatKind.TimeOffsetUTC);
+            var config = new Config(null, "Central America Standard Time", DateFormatKind.TimeOffsetUTC);
             //Assert.AreEqual(typeof(DateTimeOffset), csvIn.ColTypes[1]);
 
             var csvIn = new Csv(config, "Time, Data")
@@ -84,7 +84,7 @@ namespace CsvToolTests.TimeStacking
                 .AddInfoFrom("Fra");
 
             var spans = timeStack.GetSpansPerHour();
-            new DrawDigram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
+            new DrawDiagram(1200, 300, "SampImag.png").DrawTimeStack(spans, false);
             var csv = timeStack.GetTimeStackedCsv(spans, config);
             Assert.AreEqual(csv.GetRecord(1, 1), 11.25d);
             Assert.AreEqual(csv.GetRecord(1, 2), 1.6666666666666665d);
@@ -105,7 +105,7 @@ namespace CsvToolTests.TimeStacking
               .AddCalcAverageWeighted("Data", "DataAvgW");
 
             var spans = timeStack.GetSpansPerHour();
-            new DrawDigram(600, 500, "SampImag.png").DrawTimeStack(spans, false);
+            new DrawDiagram(600, 500, "SampImag.png").DrawTimeStack(spans, false);
             var csv = timeStack.GetTimeStackedCsv(spans);
             TraceOutput.Output(timeStack, 2);
             Assert.AreEqual(csv.GetColRecords<double>(2).Sum(o => o.Value), 43d);
@@ -128,7 +128,7 @@ namespace CsvToolTests.TimeStacking
               .AddCalcAverageWeighted("Data", "DataAvgW");
 
             var spans = timeStack.GetSpansPerHour();
-            new DrawDigram(1200, 600, "SampImag.png").DrawTimeStack(spans, false);
+            new DrawDiagram(1200, 600, "SampImag.png").DrawTimeStack(spans, false);
             var csv = timeStack.GetTimeStackedCsv(spans);
             TraceOutput.Output(timeStack, 2);
             Assert.AreEqual(csv.GetColRecords<double>(2).Sum(o => o.Value), 2);
@@ -149,7 +149,7 @@ namespace CsvToolTests.TimeStacking
                 .AddCalcAverageWeighted("Data", "DataAvgW", true);
 
             var spans = timeStack.GetSpansPerHour();
-            new DrawDigram(1200, 600, "SampImag.png").DrawTimeStack(spans, false);
+            new DrawDiagram(1200, 600, "SampImag.png").DrawTimeStack(spans, false);
             var csv = timeStack.GetTimeStackedCsv(spans);
             TraceOutput.Output(timeStack, 2);
             Assert.AreEqual(csv.GetRecord(1, 2), 0.75d);

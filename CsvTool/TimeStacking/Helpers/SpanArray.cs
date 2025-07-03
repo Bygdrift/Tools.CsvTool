@@ -42,20 +42,18 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Helpers
         //}
 
 
-        internal static List<Span> PerHour(DateTime from, DateTime to, IEnumerable<object> groups = null, int fromHour = 0, int toHour = 24, int[] weekDays = null)
+        internal static List<Span> PerHour(DateTime from, DateTime to, DateTime fromLimit, DateTime toLimit, IEnumerable<object> groups = null, int takeHours = 1, int[] weekDays = null)
         {
             var res = new List<Span>();
-            if (from > to)
-                return res;
-
-            var startTime = new DateTime(from.Year, from.Month, from.Day, from.Hour, 0, 0);
+            fromLimit = fromLimit.Date.AddHours(fromLimit.Hour);
+            toLimit = toLimit.Date.AddHours(toLimit.Hour);
             int hour = 0;
             while (true)
             {
-                var fromRes = startTime.AddHours(hour++);
+                var fromRes = (fromLimit).AddHours(hour);
                 var toRes = fromRes.AddHours(1);
 
-                if (fromRes.Hour >= fromHour && toRes.Hour <= toHour)
+                if (fromRes >= fromLimit && toRes <= toLimit)
                 {
                     if (groups != null)
                         foreach (var group in groups)
@@ -64,8 +62,42 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Helpers
                         res.Add(new Span(TimePartition.Hours, fromRes, toRes, null));
                 }
 
-                if (toRes >= to)
+                if (toRes >= (toLimit))
                     break;
+
+                hour += takeHours;
+            }
+
+            return res;
+        }
+
+        internal static List<Span> PerHour(DateTime from, DateTime to, int? fromHour = null, int? toHour = null, IEnumerable<object> groups = null, int takeHours = 1, int[] weekDays = null)
+        {
+            var res = new List<Span>();
+            //if (from > to)
+            //    return res;
+
+            var startTime = from.Date.AddHours(fromHour != null && fromHour < from.Hour ? (int)fromHour : from.Hour);
+            var endTime = startTime.AddHours(toHour != null && toHour > to.Hour ? (int)toHour : to.Hour);
+            int hour = 0;
+            while (true)
+            {
+                var fromRes = startTime.AddHours(hour);
+                var toRes = fromRes.AddHours(1);
+
+                if ((fromHour == null || fromRes.Hour >= fromHour) && (toHour == null || toRes.Hour <= toHour))
+                {
+                    if (groups != null)
+                        foreach (var group in groups)
+                            res.Add(new Span(TimePartition.Hours, fromRes, toRes, group));
+                    else
+                        res.Add(new Span(TimePartition.Hours, fromRes, toRes, null));
+                }
+
+                if (toRes >= endTime)
+                    break;
+
+                hour += takeHours;
             }
 
             return res;

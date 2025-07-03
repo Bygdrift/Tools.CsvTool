@@ -23,10 +23,10 @@ namespace Bygdrift.Tools.CsvTool
         /// </summary>
         /// <param name="filePath">Like c:\export.csv</param>
         /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
-        public void ToCsvFile(string filePath, int? take = null)
+        public Csv ToCsvFile(string filePath, int? take = null)
         {
             if (this == null || !Records.Any())
-                return;
+                return this;
 
             var stream = ToCsvStream(false, take);
 
@@ -36,6 +36,8 @@ namespace Bygdrift.Tools.CsvTool
 
             using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
             stream.CopyTo(fileStream);
+
+            return this;
         }
 
         /// <summary>
@@ -78,7 +80,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <returns></returns>
         public List<T> ToModel<T>() where T : class
         {
-            var json = ToJson();
+            var json = ToJson(false, true);
             var res = JsonConvert.DeserializeObject<List<T>>(json);
             return res;
         }
@@ -181,11 +183,12 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="paneName">The name of the worksheet</param>
         /// <param name="tableName">The name of the table inside Excel. If null, no fancy talbe will be added</param>
         /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
-        public void ToExcelFile(string filePath, string paneName = "Data", string tableName = null, int? take = null)
+        public Csv ToExcelFile(string filePath, string paneName = "Data", string tableName = null, int? take = null)
         {
             var workbook = ToExcelAsXlWokBook(paneName, tableName, take);
             workbook.SaveAs(filePath);
             workbook.Dispose();
+            return this;
         }
 
         private XLWorkbook ToExcelAsXlWokBook(string paneName, string tableName = null, int? take = null)
@@ -217,7 +220,8 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Exports data as a Newtonsoft JArray
         /// </summary>
-        public JArray ToJArray()
+        /// <param name="removeSpacesFromHeaders">Removes all spaces from alle headers</param>
+        public JArray ToJArray(bool removeSpacesFromHeaders = false)
         {
             var res = new JArray();
 
@@ -226,7 +230,7 @@ namespace Bygdrift.Tools.CsvTool
                 var rowObject = new JObject();
                 for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
                     if (TryGetRecord(row, col, out object val))
-                        rowObject.Add(new JProperty(Headers[col], val));
+                        rowObject.Add(new JProperty(removeSpacesFromHeaders ? Headers[col].Replace(" ", string.Empty) : Headers[col], val));
 
                 if (rowObject.Count > 0)
                     res.Add(rowObject);
@@ -238,10 +242,11 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Exports csv as a json string
         /// </summary>
-        /// <param name="useFormatting">If true, then data gets indented and eas to read, but longer</param>
-        public string ToJson(bool useFormatting = false)
+        /// <param name="useFormatting">If true, then data gets indented and easy to read, but longer</param>
+        /// <param name="removeSpacesFromHeaders">Removes all spaces from alle headers</param>
+        public string ToJson(bool useFormatting = false, bool removeSpacesFromHeaders = false)
         {
-            return ToJArray().ToString(useFormatting ? Newtonsoft.Json.Formatting.Indented : Newtonsoft.Json.Formatting.None);
+            return ToJArray(removeSpacesFromHeaders).ToString(useFormatting ? Formatting.Indented : Formatting.None);
         }
 
         /// <summary>

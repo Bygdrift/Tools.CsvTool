@@ -51,22 +51,22 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         }
 
         /// <summary>Returns dateTimeOffset as decriped in formatKind </summary>
-        public DateTimeOffset Now(FormatKind formatKind)
+        public DateTimeOffset Now(DateFormatKind formatKind)
         {
             var utcNow = DateTimeOffset.UtcNow;
             return Now(formatKind, utcNow);
         }
 
         /// <summary>Returns dateTimeOffset as decriped in formatKind</summary>
-        public DateTimeOffset Now(FormatKind formatKind, DateTimeOffset utcNow)
+        public DateTimeOffset Now(DateFormatKind formatKind, DateTimeOffset utcNow)
         {
-            if (formatKind == FormatKind.Universal)
+            if (formatKind == DateFormatKind.Universal)
                 return utcNow;
-            if (formatKind == FormatKind.TimeOffsetUTC)
+            if (formatKind == DateFormatKind.TimeOffsetUTC)
                 return new DateTimeOffset(UtcToLocal(utcNow), config.TimeZoneInfo.BaseUtcOffset);
-            if (formatKind == FormatKind.TimeOffsetDST)
+            if (formatKind == DateFormatKind.TimeOffsetDST)
                 return UtcToLocal(utcNow);
-            if (formatKind == FormatKind.Local)
+            if (formatKind == DateFormatKind.Local)
                 return DateTime.SpecifyKind(UtcToLocal(utcNow), DateTimeKind.Local);
             else
                 throw new Exception();
@@ -82,17 +82,17 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         /// <summary>Returns dateTime as a string as decriped in config. </summary>
         public string DateTimeToString(DateTime dateTime)
         {
-            if (config.DateFormatKind == FormatKind.Universal)
+            if (config.DateFormatKind == DateFormatKind.Universal)
             {
                 var utc = config.TimeZoneInfo != null ? TimeZoneInfo.ConvertTimeFromUtc(dateTime, config.TimeZoneInfo) : dateTime.ToUniversalTime();
                 return utc.ToString(formatUtc);
             }
-            if (config.DateFormatKind == FormatKind.TimeOffsetUTC || config.DateFormatKind == FormatKind.TimeOffsetDST)
+            if (config.DateFormatKind == DateFormatKind.TimeOffsetUTC || config.DateFormatKind == DateFormatKind.TimeOffsetDST)
             {
                 var time = ToDateTimeOffset(dateTime);
                 return time.ToString(formatOffset);
             }
-            if (config.DateFormatKind == FormatKind.Local)
+            if (config.DateFormatKind == DateFormatKind.Local)
                 return dateTime.ToString(formatLocal);
             else
                 throw new Exception();
@@ -103,9 +103,9 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         /// </summary>
         public string DateTimeToString(DateTimeOffset dateTimeOffset)
         {
-            if (config.DateFormatKind == FormatKind.Universal)
+            if (config.DateFormatKind == DateFormatKind.Universal)
                 return dateTimeOffset.ToUniversalTime().ToString(formatUtc);
-            if (config.DateFormatKind == FormatKind.TimeOffsetUTC || config.DateFormatKind == FormatKind.TimeOffsetDST)
+            if (config.DateFormatKind == DateFormatKind.TimeOffsetUTC || config.DateFormatKind == DateFormatKind.TimeOffsetDST)
                 return dateTimeOffset.ToString(formatOffset);
             else
                 return dateTimeOffset.ToString(formatLocal);
@@ -129,9 +129,9 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         {
             if (config.TimeZoneInfo != null)
             {
-                if (config.DateFormatKind == FormatKind.TimeOffsetDST)
+                if (config.DateFormatKind == DateFormatKind.TimeOffsetDST)
                     return config.TimeZoneInfo.GetUtcOffset(dateTime);
-                if (config.DateFormatKind == FormatKind.TimeOffsetUTC)
+                if (config.DateFormatKind == DateFormatKind.TimeOffsetUTC)
                     return config.TimeZoneInfo.BaseUtcOffset;
             }
             return default;
@@ -144,11 +144,11 @@ namespace Bygdrift.Tools.CsvTool.Helpers
         {
             get
             {
-                if (config.DateFormatKind == FormatKind.Universal)
+                if (config.DateFormatKind == DateFormatKind.Universal)
                     return 20;
-                if (config.DateFormatKind == FormatKind.TimeOffsetUTC || config.DateFormatKind == FormatKind.TimeOffsetDST)
+                if (config.DateFormatKind == DateFormatKind.TimeOffsetUTC || config.DateFormatKind == DateFormatKind.TimeOffsetDST)
                     return 25;  //2022-06-01T12:00:00+02:00
-                if (config.DateFormatKind == FormatKind.Local)
+                if (config.DateFormatKind == DateFormatKind.Local)
                     return 19;
                 else
                     throw new Exception();

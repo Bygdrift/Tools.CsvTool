@@ -85,20 +85,29 @@ namespace CsvToolTests
         {
             var time = new DateTime(2022, 6, 1, 12, 0, 0);
 
-            var csv1 = new Csv(new Config("da-DK", "GMT Standard Time", FormatKind.Universal), "Date").AddRow(time);
+            var csv1 = new Csv(new Config("da-DK", "GMT Standard Time", DateFormatKind.Universal), "Date").AddRow(time);
             Assert.AreEqual(20, csv1.ColMaxLengths[1]);
             Assert.AreEqual("Date\n2022-06-01T13:00:00Z\n", csv1.ToCsvString());
             Assert.AreEqual(typeof(DateTime), csv1.ColTypes[1]);
 
-            var csv2 = new Csv(new Config("en-US", "Romance Standard Time", FormatKind.Local), "Date").AddRow(time);
+            var csv2 = new Csv(new Config("en-US", "Romance Standard Time", DateFormatKind.Local), "Date").AddRow(time);
             Assert.AreEqual("Date\n2022-06-01T12:00:00\n", csv2.ToCsvString());
             Assert.AreEqual(19, csv2.ColMaxLengths[1]);
             Assert.AreEqual(typeof(DateTime), csv2.ColTypes[1]);
 
-            var csv3 = new Csv(new Config("en-US", "Romance Standard Time", FormatKind.TimeOffsetUTC), "Date").AddRow(time);
+            var csv3 = new Csv(new Config("en-US", "Romance Standard Time", DateFormatKind.TimeOffsetUTC), "Date").AddRow(time);
             Assert.AreEqual("Date\n2022-06-01T12:00:00+01:00\n", csv3.ToCsvString());
             Assert.AreEqual(25, csv3.ColMaxLengths[1]);
             Assert.AreEqual(typeof(DateTimeOffset), csv3.ColTypes[1]);
+
+
+            var csv4 = new Csv(new Config("da-DK", "Romance Standard Time", DateFormatKind.TimeOffsetUTC), "Date").AddRow(time);
+            //Assert.AreEqual("Date\n2022-06-01T12:00:00+01:00\n", csv3.ToCsvString());
+            //Assert.AreEqual(25, csv3.ColMaxLengths[1]);
+            //Assert.AreEqual(typeof(DateTimeOffset), csv3.ColTypes[1]);
+
+
+
         }
 
         [TestMethod]
