@@ -1,5 +1,4 @@
-﻿using Bygdrift.Tools.CsvTool.Helpers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -91,22 +90,22 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// All headers in current CSV, represented by column id and name
         /// </summary>
-        public Dictionary<int, string> Headers { get; internal set; } = new();
+        public Dictionary<int, string> Headers { get; set; } = [];
 
         /// <summary>
         /// All column types in current CSV, represented by column id and Type
         /// </summary>
-        public Dictionary<int, Type> ColTypes { get; internal set; } = new();
+        public Dictionary<int, Type> ColTypes { get; set; } = [];
 
         /// <summary>
         /// Gives the length of the record with the logest content in a given column
         /// </summary>
-        public Dictionary<int, int> ColMaxLengths { get; internal set; } = new();
+        public Dictionary<int, int> ColMaxLengths { get; set; } = [];
 
         /// <summary>
         /// Each value in the csv
         /// </summary>
-        public Dictionary<(int Row, int Col), object> Records { get; internal set; } = new();
+        public Dictionary<(int Row, int Col), object> Records { get; set; } = [];
 
         /// <summary>
         /// The min and max of columns. If min=0 and max=0 there can either be zero or one col and it can be seen at ColCount

@@ -28,7 +28,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
 
         /// <summary></summary>
         public int? CsvCol { get; }
-        
+
         /// <summary></summary>
         public string CsvHeader { get; }
 
@@ -40,7 +40,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Models
 
         /// <summary></summary>
         public bool IsAccumulated { get; }
-        
+
         /// <summary></summary>
         public bool IsSerialData { get; }
 

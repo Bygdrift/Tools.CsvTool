@@ -92,6 +92,20 @@ namespace CsvToolTests
         }
 
         [TestMethod]
+        public void FromExcelStream()
+        {
+            var filePath = Path.Combine(basePath, "Files", "Excel", "Simple data to csv.xlsx");
+            //var filePath = Path.Combine("c:\\Users\\kenbo\\Downloads\\Sss\\Dd.xlsx");
+
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+            var pane1Csv = new Csv();
+            pane1Csv.AddExcelStream(stream);
+
+            Assert.AreEqual((1, 3), pane1Csv.ColLimit);
+            Assert.AreEqual((1, 6), pane1Csv.RowLimit);
+        }
+
+        [TestMethod]
         public void FromExcelTable()
         {
             var filePath = Path.Combine(basePath, "Files", "Excel", "simpleExportAsTable.xlsx");
@@ -178,16 +192,39 @@ namespace CsvToolTests
         [TestMethod]
         public void FromModelList()
         {
-            var data = new List<ModelTest>
+            //var data = new List<ModelTest> { new ModelTest { Number = 30, Text = "Test1", ValueToIgnore = "Hey" } };
+            //var tt = new Csv().AddModel(data);
+            var csv = new Csv("Header").AddRow("Hey1");
+            var data1 = new List<ModelTest> { new ModelTest { Number = 30, Text = "Test1", ValueToIgnore = "Hey" } };
+            csv.AddModel(data1);
+
+            var data2 = new List<ModelTest>{new ModelTest{ Number = 50, Text = "Test2", ValueToIgnore = "Hey" }};
+            csv.AddModel(data2);
+
+
+            var json = csv.ToJson();
+            Assert.AreEqual(json, "[{\"Header\":\"Hey1\"},{\"Number\":30,\"Text\":\"Test1\"},{\"Number\":50,\"Text\":\"Test2\"}]");
+        }
+
+        [TestMethod]
+        public void FromModelListNestedData()
+        {
+            var data = new List<ModelTest2>
             {
-                new ModelTest{ Number = 30, Text = "Test1", ValueToIgnore = "Hey" },
-                new ModelTest{ Number = 50, Text = "Test2", ValueToIgnore = "Hey" },
+                new ModelTest2{
+                    Number = 30, Text = "Test1", ValueToIgnore = "Hey", date = DateTime.Now, Model =
+                    new ModelTest{ Number = 30, Text = "Test1", ValueToIgnore = "Hey" }
+                },
             };
 
             var csv = new Csv().AddModel(data);
-            var json = csv.ToJson();
-            Assert.AreEqual(json, "[{\"Number\":30,\"Text\":\"Test1\"},{\"Number\":50,\"Text\":\"Test2\"}]");
+            var stream = csv.ToExcelStream("Data", "d");
+            var csvOut = new Csv().AddExcelStream(stream);
+            var csvOutJson = csvOut.ToJson();
+            //Burde ignorere ValueToIgnore, men det må jeg indarbejde en anden dag.
+            Assert.AreEqual("[{\"Number\":30.0,\"Text\":\"Test1\",\"Model\":\"{\\\"Number\\\":30,\\\"Text\\\":\\\"Test1\\\",\\\"ValueToIgnore\\\":\\\"Hey\\\"}\"}]", csvOutJson);
         }
+
 
         [TestMethod]
         public void FromStreamWithStartingComma()

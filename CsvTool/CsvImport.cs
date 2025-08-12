@@ -1,16 +1,11 @@
-﻿using ClosedXML.Excel;
-using CsvTool.Attributes;
-using DocumentFormat.OpenXml.Drawing;
-using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Vml;
-using DocumentFormat.OpenXml.Wordprocessing;
+﻿using CsvTool.Attributes;
 using Newtonsoft.Json.Linq;
+using SlapKit.Excel.Excel;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Bygdrift.Tools.CsvTool
@@ -141,9 +136,7 @@ namespace Bygdrift.Tools.CsvTool
         /// </summary>
         public Csv AddModel<T>(IEnumerable<T> source) where T : class
         {
-            var thisIsEmpty = !Records.Any() && !Headers.Any();
-            var csvIn = new Csv(this.Config);
-            var r = 1;
+            var r = this.RowLimit.Max + 1;
             foreach (var item in source)
             {
                 foreach (var prop in item.GetType().GetProperties())
@@ -151,12 +144,12 @@ namespace Bygdrift.Tools.CsvTool
                     if (!prop.GetCustomAttributes(true).OfType<CsvIgnore>().Any())
                     {
                         var val = prop.GetValue(item, null);
-                        csvIn.AddRecord(r, prop.Name, val);
+                        this.AddRecord(r, prop.Name, val);
                     }
                 }
                 r++;
             }
-            return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
+            return this;
         }
 
         /// <summary>
@@ -169,8 +162,23 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="firstRowIsHeader">If the first row continas header values</param>
         public Csv AddExcelFile(string filePath, int paneNumber = 1, int rowStart = 1, int colStart = 1, bool firstRowIsHeader = true)
         {
-            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             return AddExcelStream(stream, paneNumber, colStart, rowStart, firstRowIsHeader);
+        }
+
+        /// <summary>
+        /// Imports Csv from an excel file.
+        /// </summary>
+        /// <param name="filePath">A path like c\:file.xls or c:\fil.xlsx</param>
+        /// <param name="paneName">The name of the pane in the worksheet</param>
+        /// <param name="colStart">The start column in the excel pane. Minimum 1</param>
+        /// <param name="rowStart">The start row in the excel pane. Minimum 1</param>
+        /// <param name="firstRowIsHeader">If the first row continas header values</param>
+        public Csv AddExcelFile(string filePath, string paneName, int rowStart = 1, int colStart = 1, bool firstRowIsHeader = true)
+        {
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            AddExcelStream(stream, paneName, colStart, rowStart, firstRowIsHeader);
+            return this;
         }
 
         /// <summary>
@@ -183,37 +191,69 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="firstRowIsHeader">If the first row continas header values</param>
         public Csv AddExcelStream(Stream stream, int paneNumber = 1, int colStart = 1, int rowStart = 1, bool firstRowIsHeader = true)
         {
-            var thisIsEmpty = !Records.Any() && !Headers.Any();
-            var csvIn = new Csv(this.Config);
             var wb = new XLWorkbook(stream);
             if (paneNumber < 1 || paneNumber > wb.Worksheets.Count)
                 return this;
 
             var ws = wb.Worksheets.ElementAt(paneNumber - 1);
+            var csv = ExtractCsvFromExcelWorksheet(colStart, rowStart, firstRowIsHeader, ws);
+
+            AddCsv(csv, true);
+            return this;
+        }
+
+        /// <summary>
+        /// Imports Csv from an excel stream.
+        /// </summary>
+        /// <param name="stream">The stream containg data from an excel spread sheet</param>
+        /// <param name="paneName">The name of the pane in the worksheet</param>
+        /// <param name="colStart">The start column in the excel pane. Minimum 1</param>
+        /// <param name="rowStart">The start row in the excel pane. Minimum 1</param>
+        /// <param name="firstRowIsHeader">If the first row continas header values</param>
+        public Csv AddExcelStream(Stream stream, string paneName, int colStart = 1, int rowStart = 1, bool firstRowIsHeader = true)
+        {
+            var wb = new XLWorkbook(stream);
+            var ws = wb.Worksheets.SingleOrDefault(o => o.Name.Equals(paneName, StringComparison.OrdinalIgnoreCase));
+            var csv = ExtractCsvFromExcelWorksheet(colStart, rowStart, firstRowIsHeader, ws);
+            AddCsv(csv, true);
+            return this;
+        }
+
+        private Csv ExtractCsvFromExcelWorksheet(int colStart, int rowStart, bool firstRowIsHeader, IXLWorksheet ws)
+        {
+            var csvIn = new Csv(this.Config);
+            if (ws == null)
+                return csvIn;
+
+            var thisIsEmpty = !Records.Any() && !Headers.Any();
             var firstPossibleAddress = ws.Row(rowStart).Cell(colStart).Address;
-            var lastPossibleAddress = ws.LastCellUsed().Address;
-            var table = ws.Tables.Any() ? ws.Tables.First() : ws.Range(firstPossibleAddress, lastPossibleAddress).RangeUsed().AsTable();
+            var lastPossibleAddress = ws.LastCellUsed()?.Address;
+            if (lastPossibleAddress == null)
+                return csvIn;
+
+            var range = ws.Range(firstPossibleAddress, lastPossibleAddress).RangeUsed();
             var csvRow = 1;
             var excelRow = 1;
-            foreach (var row in table.RowsUsed())  //Inspiration: https://github.com/closedxml/closedxml/wiki/Using-Tables
+            foreach (var row in range.RowsUsed())
             {
                 var recordAdded = false;
                 var csvCol = 1;
                 foreach (var cell in row.Cells())
                 {
+                    var valAsString = cell.GetValue<string>();
                     var val = cell.CachedValue;  //By using cached Value, some errors with relation to tables are not thrown as with cell.Value. Furthermore danish punctuation as 1.000,00 are witten as 1000.00
                     if (excelRow == 1 && firstRowIsHeader)
-                        csvIn.AddHeader(csvCol, val.ToString());
+                        csvIn.AddHeader(csvCol, valAsString);
                     else
                     {
-                        if (val.GetType() == typeof(double))
-                        {
-                            var valInt = Convert.ToInt64(val);
-                            if (valInt == (double)val)
-                                val = valInt;
-                        }
-
-                        csvIn.AddRecord(csvRow, csvCol, val);
+                        if (val.IsNumber)
+                            csvIn.AddRecord(csvRow, csvCol, val.GetNumber());
+                        else if (val.IsText)
+                            csvIn.AddRecord(csvRow, csvCol, val.GetText());
+                        //else if (val.IsDateTime)
+                        //    csvIn.AddRecord(csvRow, csvCol, valAsString);
+                        else
+                            csvIn.AddRecord(csvRow, csvCol, valAsString);
                         recordAdded = true;
                     }
                     csvCol++;
@@ -223,7 +263,9 @@ namespace Bygdrift.Tools.CsvTool
 
                 excelRow++;
             }
+
             return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
+
         }
 
         /// <summary>

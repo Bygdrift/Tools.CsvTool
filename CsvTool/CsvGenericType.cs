@@ -1,6 +1,4 @@
-﻿using DocumentFormat.OpenXml.Office2010.ExcelAc;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -22,7 +20,7 @@ namespace Bygdrift.Tools.CsvTool
 
 
             var j = g.GetProperties();
-            
+
             foreach (var prop in g.GetProperties())
                 AddRecord(row, prop.Name, prop.PropertyType, prop.GetValue(item, null));
 

@@ -82,8 +82,8 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// The list of formats that the date checker verifies agianst. It is posible to add or replace these.
         /// </summary>
-        public List<string> DateFormats = new()
-        {
+        public List<string> DateFormats { get; set; } =
+        [
             "yyyy M d",
             "yyyy-M-d",
             "yyyy/M/d",
@@ -94,7 +94,7 @@ namespace Bygdrift.Tools.CsvTool
             "yyyy M d H:m:s",
             "yyyy-M-d H:m:s",
             "yyyy/M/d H:m:s",
-        };
+        ];
 
         /// <summary>What format datetimes should have</summary>
         public DateFormatKind DateFormatKind { get; set; }
@@ -152,7 +152,7 @@ namespace Bygdrift.Tools.CsvTool
         public Config AddDateFormats(string formats, char delimiter = ',')
         {
             foreach (var item in Csv.SplitString(formats, delimiter))
-               DateFormats.Add(item.Value);
+                DateFormats.Add(item.Value);
 
             return this;
         }

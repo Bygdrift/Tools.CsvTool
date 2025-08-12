@@ -1,12 +1,29 @@
-﻿using DocumentFormat.OpenXml.Vml;
+﻿using Newtonsoft.Json;
+using SlapKit.Excel.Excel;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace Bygdrift.Tools.CsvTool
 {
     public partial class Csv
     {
+        /// <summary>
+        /// Returns a list of names on panes in an Excel workbook
+        /// </summary>
+        /// <param name="filePath">The path to the file</param>
+        public static Dictionary<int, string> GetExcelPaneNames(string filePath)
+        {
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var res = new Dictionary<int, string>();
+            var wb = new XLWorkbook(stream);
+            var ws = wb.Worksheets;
+            foreach (var item in wb.Worksheets)
+                res.Add(item.Position, item.Name);
+
+            return res;
+        }
 
         /// <summary>
         /// Creates a shallow copy of the csv that will not be linked to the original
@@ -241,8 +258,11 @@ namespace Bygdrift.Tools.CsvTool
         /// <returns>Dictionary&lt;GroupValue, Dictionary&lt;RowNumber, T&gt;&gt;</returns>
         public Dictionary<object, Dictionary<int, T>> GetColRecordsGrouped<T>(string headerNameGroup, string headerName, bool includeNullValues = true, bool caseSensetive = true)
         {
-            var colNumber = GetHeader(headerName);
             var res = new Dictionary<object, Dictionary<int, T>>();
+            var colNumber = GetHeader(headerName);
+            if (colNumber == null)
+                return res;
+
             var groupColRecords = GetColRecordsDistinct(headerNameGroup, includeNullValues);
             foreach (object groupRecord in groupColRecords)
             {
@@ -251,7 +271,7 @@ namespace Bygdrift.Tools.CsvTool
                 {
                     var subRes = new Dictionary<int, T>();
                     foreach (var r in rowRecords.Keys)
-                        if (rowRecords[r].TryGetValue(colNumber, out object val) && RecordToType<T>(val, out T resultVal))  //TODO: Denne kan være pænere
+                        if (rowRecords[r].TryGetValue((int)colNumber, out object val) && RecordToType<T>(val, out T resultVal))  //TODO: Denne kan være pænere
                             subRes.Add(r, resultVal);
 
                     res.Add(groupRecord, subRes);
@@ -261,12 +281,24 @@ namespace Bygdrift.Tools.CsvTool
         }
 
         /// <summary>
+        /// Gives the column type
+        /// </summary>
+        public Type GetColType(int col)
+        {
+            if (ColTypes.TryGetValue(col, out Type value))
+                return value;
+
+            return null;
+        }
+
+
+        /// <summary>
         /// Gives a header
         /// </summary>
-        /// <returns>-1 if none found</returns>
-        public int GetHeader(string headerName)
+        /// <returns>null if none found</returns>
+        public int? GetHeader(string headerName)
         {
-            return Headers.ContainsValue(headerName) ? Headers.Single(o => o.Value == headerName).Key : -1;
+            return Headers.ContainsValue(headerName) ? Headers.Single(o => o.Value == headerName).Key : null;
         }
 
         /// <summary>
@@ -545,6 +577,25 @@ namespace Bygdrift.Tools.CsvTool
         public bool TryGetRecord(int row, int col, out object value)
         {
             return Records.TryGetValue((row, col), out value);
+        }
+
+        /// <summary>
+        /// Try to get a record an return if it succeded or not
+        /// </summary>
+        /// <param name="row">rowId</param>
+        /// <param name="col">colId</param>
+        /// <param name="convertModelToJson">If value is a model, then it can be converted to json</param>
+        /// <param name="value">The value will be available from here</param>
+        public bool TryGetRecord(int row, int col, bool convertModelToJson, out object value)
+        {
+            var succes = Records.TryGetValue((row, col), out value);
+            if (succes && convertModelToJson && value != null)
+            {
+                var type = value.GetType();
+                if (type != typeof(string) && type.IsClass)
+                    value = JsonConvert.SerializeObject(value);
+            }
+            return succes;
         }
 
         /// <summary>

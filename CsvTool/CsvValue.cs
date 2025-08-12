@@ -6,6 +6,17 @@ namespace Bygdrift.Tools.CsvTool
     public partial class Csv
     {
         /// <summary>
+        /// Returns if values in current column is model.
+        /// </summary>
+        /// <param name="col"></param>
+        /// <returns></returns>
+        public bool RecordIsModel(int col)
+        {
+            ColTypes.TryGetValue(col, out Type type);
+            return type != null && type != typeof(string) && type.IsClass;
+        }
+
+        /// <summary>
         /// The type and length of a value
         /// </summary>
         /// <param name="value">An object</param>
@@ -73,7 +84,9 @@ namespace Bygdrift.Tools.CsvTool
                 value = dateValue;
                 return (typeof(DateTime), Config.DateHelper.DateTimeLength);
             }
-            return (typeof(string), valueLength);
+
+            return (type, valueLength);
+            //return (typeof(string), valueLength);
         }
 
         /// <summary>

@@ -1,6 +1,9 @@
-﻿using ClosedXML.Excel;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SlapKit.Excel.Excel;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -10,13 +13,43 @@ using System.Text;
 
 namespace Bygdrift.Tools.CsvTool
 {
-
     /// <summary>
     /// Export csv to different formats
     /// </summary>
     public partial class Csv
     {
         private Dictionary<int, int> _colMaxLengthsWithHeaders;
+
+        /// <summary>
+        /// Export to a csv file
+        /// </summary>
+        public string ToClass(string namespaceName, string className)
+        {
+            var fields = "";
+            if (ColLimit.Max > ColLimit.Min)
+                for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
+                {
+                    var header = GetHeader(col);
+                    var type = ColTypes.GetValueOrDefault(col);
+                    fields += $"public {(type != null ? type.Name : "string")} {header} {{ get; set; }}\n";
+
+                }
+            var classCode = $@"
+                using System;
+                namespace {namespaceName}
+                {{
+                    public class {className}
+                    {{
+                        {fields}
+                    }}
+
+                }}";
+            var tree = CSharpSyntaxTree.ParseText(classCode);
+            var root = tree.GetRoot().NormalizeWhitespace();
+            var result = root.ToFullString();
+
+            return result;
+        }
 
         /// <summary>
         /// Export to a csv file
@@ -114,15 +147,23 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Exports to a data table
         /// </summary>
+        /// <param name="convertModelToJson">If value is a model, then it can be converted to json</param>
         /// <param name="take"></param>
         /// <returns></returns>
-        public DataTable ToDataTable(int? take = null)
+        public DataTable ToDataTable(bool convertModelToJson = false, int? take = null)
         {
             var table = new DataTable();
-            foreach (var header in Headers)
+            for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
             {
-                ColTypes.TryGetValue(header.Key, out Type type);
-                table.Columns.Add(header.Value.ToString(), type);
+                var header = GetHeader(col);
+                ColTypes.TryGetValue(col, out Type type);
+                if (type == null)
+                    type = typeof(string);
+
+                if (convertModelToJson && RecordIsModel(col))
+                    type = typeof(string);
+
+                table.Columns.Add(header, type);
             }
 
             foreach (var row in GetRowsRecords(false))
@@ -130,12 +171,26 @@ namespace Bygdrift.Tools.CsvTool
                 if (take != null && row.Key >= take)
                     break;
 
-                var entities = row.Value.Select(o => o.Value).ToArray();
-                table.Rows.Add(entities);
+                if (convertModelToJson)
+                {
+                    var entities = new List<object>();
+                    foreach (var record in row.Value)
+                    {
+                        if (RecordIsModel(record.Key))
+                            entities.Add(JsonConvert.SerializeObject(record.Value));
+                        else
+                            entities.Add(record.Value);
+                    }
+                    table.Rows.Add([.. entities]);
+                }
+                else
+                    table.Rows.Add(row.Value.Select(o => o.Value).ToArray());
+
             }
 
             return table;
         }
+
 
         //Is removed. Instead use: new Csv().FromFile().ToDataTable()
         //public DataTable ToDataTable(string csvFilePath)
@@ -167,7 +222,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="paneName">The name of the worksheet</param>
         /// <param name="tableName">The name of the table inside Excel. If null, no fancy talbe will be added</param>
         /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
-        public Stream ToExcelStream(string paneName, string tableName = null, int? take = null)
+        public Stream ToExcelStream(string paneName = "Data", string tableName = null, int? take = null)
         {
             var workbook = ToExcelAsXlWokBook(paneName, tableName, take);
             var stream = new MemoryStream();
@@ -178,10 +233,11 @@ namespace Bygdrift.Tools.CsvTool
 
         /// <summary>
         /// Export Excel as a file
+        /// Using this library: https://docs.closedxml.io/en/latest/installation.html
         /// </summary>
         /// <param name="filePath">Like c:\file.xlsx</param>
         /// <param name="paneName">The name of the worksheet</param>
-        /// <param name="tableName">The name of the table inside Excel. If null, no fancy talbe will be added</param>
+        /// <param name="tableName">The name of the table inside Excel. If null, no fancy table will be added</param>
         /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
         public Csv ToExcelFile(string filePath, string paneName = "Data", string tableName = null, int? take = null)
         {
@@ -189,6 +245,60 @@ namespace Bygdrift.Tools.CsvTool
             workbook.SaveAs(filePath);
             workbook.Dispose();
             return this;
+        }
+
+        /// <summary>
+        /// Export Excel as a XLWorkbook
+        /// Using this library: https://docs.closedxml.io/en/latest/installation.html
+        /// </summary>
+        /// <param name="workbook"></param>
+        /// <param name="paneName">The name of the worksheet</param>
+        /// <param name="tableName">The name of the table inside Excel. If null, no fancy table will be added</param>
+        /// <param name="rowStart">The start row in the excel pane. Minimum 1</param>
+        public IXLWorksheet ToExcelSheet(XLWorkbook workbook, string paneName = "Data", string tableName = null, int rowStart = 1)
+        {
+            var worksheet = workbook.Worksheets.FirstOrDefault(s => s.Name == paneName);
+            var table = worksheet?.Tables.FirstOrDefault(s => s.Name == tableName);
+
+
+            if (worksheet == null)
+                worksheet = workbook.Worksheets.Add(paneName);
+
+            if (table != null)
+            {
+
+                var range = table.DataRange.RangeAddress;
+                var fullTableRange = worksheet.Range(table.RangeAddress.ToString());
+
+                fullTableRange.Clear(XLClearOptions.Contents);
+
+                //table.Range().Clear(XLClearOptions.Contents);
+            }
+
+            if (this != null && Headers.Count != 0)
+            {
+                for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
+                    worksheet.Cell(rowStart, col).Value = Headers[col];
+
+                for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
+                    for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
+                    {
+                        TryGetRecord(row, col, true, out object value);
+                        worksheet.Cell(rowStart + row, col).Value = XLCellValue.FromObject(value);
+                    }
+            }
+
+            if (!string.IsNullOrEmpty(tableName))
+            {
+                var rangeUsed = worksheet.RangeUsed();
+                var firstCell = worksheet.Cell(rowStart, 1);
+                var lastCell = worksheet.Cell(RowLimit.Max+2, ColLimit.Max);
+                if (table != null)
+                    table.Resize(firstCell, lastCell);
+                else
+                    worksheet.Range(firstCell, lastCell).CreateTable(tableName);
+            }
+            return worksheet;
         }
 
         private XLWorkbook ToExcelAsXlWokBook(string paneName, string tableName = null, int? take = null)
@@ -199,23 +309,34 @@ namespace Bygdrift.Tools.CsvTool
 
             if (this != null && Records.Any())
             {
-                if (!string.IsNullOrEmpty(tableName))
-                {
-                    var dataTable = ToDataTable(take);
-                    worksheet.Cell(1, 1).InsertTable(dataTable.AsEnumerable(), tableName);  //https://github.com/closedxml/closedxml/wiki/Inserting-Tables
-                }
-                else
-                {
-                    for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-                        worksheet.Cell(1, col).Value = Headers[col];
+                for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
+                    worksheet.Cell(1, col).Value = Headers[col];
 
-                    for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
-                        for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-                            worksheet.Cell(row + 1, col).Value = GetRecord(row, col);
-                }
+                for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
+                    for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
+                    {
+                        TryGetRecord(row, col, true, out object value);
+                        worksheet.Cell(row + 1, col).Value = XLCellValue.FromObject(value);
+                    }
+
+                if (!string.IsNullOrEmpty(tableName))
+                    worksheet.RangeUsed().CreateTable(tableName);
             }
             return workbook;
         }
+
+        //private XLCellValue GetVal(int row, int col)
+        //{
+        //    var val = GetRecord(row, col);
+        //    if (val != null)
+        //    {
+        //        var type = val.GetType();
+        //        if (type != typeof(string) && type.IsClass)
+        //            val = JsonConvert.SerializeObject(val);
+        //    }
+        //    var res = XLCellValue.FromObject(val);
+        //    return res;
+        //}
 
         /// <summary>
         /// Exports data as a Newtonsoft JArray
@@ -229,8 +350,14 @@ namespace Bygdrift.Tools.CsvTool
             {
                 var rowObject = new JObject();
                 for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-                    if (TryGetRecord(row, col, out object val))
-                        rowObject.Add(new JProperty(removeSpacesFromHeaders ? Headers[col].Replace(" ", string.Empty) : Headers[col], val));
+                    if (TryGetRecord(row, col, true, out object val))
+                    {
+                        var name = removeSpacesFromHeaders ? Headers[col].Replace(" ", string.Empty) : Headers[col];
+
+                        var a = new JProperty(name, val);
+                        rowObject.Add(a);
+
+                    }
 
                 if (rowObject.Count > 0)
                     res.Add(rowObject);

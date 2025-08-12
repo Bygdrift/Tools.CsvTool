@@ -59,7 +59,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking.Helpers
             return default;
         }
 
-        
+
 
         private static object CalcAverage(TimeStack stack, Span span, CsvColumn column)
         {

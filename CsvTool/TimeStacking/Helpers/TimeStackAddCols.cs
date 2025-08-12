@@ -93,7 +93,7 @@ namespace Bygdrift.Tools.CsvTool.TimeStacking
             return AddCols(CsvColumnType.CalcSum, existingHeaders, newHeaders, isAccumulated, false, null, factor);
         }
 
-        
+
         /// <summary>
         /// 
         /// </summary>

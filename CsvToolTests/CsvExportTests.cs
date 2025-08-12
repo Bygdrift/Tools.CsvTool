@@ -100,28 +100,24 @@ namespace CsvToolTests
             Assert.AreEqual(25, csv3.ColMaxLengths[1]);
             Assert.AreEqual(typeof(DateTimeOffset), csv3.ColTypes[1]);
 
-
             var csv4 = new Csv(new Config("da-DK", "Romance Standard Time", DateFormatKind.TimeOffsetUTC), "Date").AddRow(time);
             //Assert.AreEqual("Date\n2022-06-01T12:00:00+01:00\n", csv3.ToCsvString());
             //Assert.AreEqual(25, csv3.ColMaxLengths[1]);
             //Assert.AreEqual(typeof(DateTimeOffset), csv3.ColTypes[1]);
-
-
-
         }
 
         [TestMethod]
         public void ToExcelFile()
         {
             var csv = new Csv("Id, Age").AddRow(1, 5).AddRow(2, 8);
-            csv.ToExcelFile(Path.Combine(basePath, "Files", "Excel", "Export", "simpleExport.xlsx"), "Data");
-            csv.ToExcelFile(Path.Combine(basePath, "Files", "Excel", "Export", "simpleExportAsTable.xlsx"), "Data", "Table1");
+            csv.ToExcelFile(Path.Combine(basePath, "Files", "Excel", "simpleExport.xlsx"), "Data");
+            csv.ToExcelFile(Path.Combine(basePath, "Files", "Excel", "simpleExportAsTable.xlsx"), "Data", "Table1");
         }
 
         [TestMethod]
         public void ToExcelStream()
         {
-            var csv = new Csv("Id, Age").AddRow(5.2, 1).AddRow(2, 8);
+            var csv = new Csv("Id, Age").AddRow(5.2, 6.2d).AddRow(2, 8);
             using var stream = csv.ToExcelStream("Data");
             var csvOut = new Csv().AddExcelStream(stream);
             Assert.AreEqual(csv.ToJson(), csvOut.ToJson());
