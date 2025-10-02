@@ -266,6 +266,21 @@ namespace CsvToolTests
         }
 
         [TestMethod]
+        public void RemoveRow()
+        {
+            var csv = new Csv("A,B");
+            csv.AddRecord(1, 1, null);
+            csv.AddRecord(2, 1, "a2");
+            csv.AddRecord(2, 2, "b2");
+            csv.AddRecord(3, 1, "a3");
+            csv.AddRecord(3, 2, "b3");
+            csv.AddRecord(4, 1, "a4");
+            csv.AddRecord(4, 2, "b4");
+            csv.RemoveRow(2);
+            Assert.IsTrue(csv.RowCount == 3);
+        }
+
+        [TestMethod]
         public void RemoveRows()
         {
             var csv = new Csv("A,B");

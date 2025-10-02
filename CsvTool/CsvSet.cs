@@ -311,8 +311,8 @@ namespace Bygdrift.Tools.CsvTool
                         {
                             isEmpty = false;
                             newRow++;
+                            newRecords.Add((origRow, header.Key), val);
                         }
-                        newRecords.Add((origRow, header.Key), val);
                     }
             }
 
@@ -333,6 +333,7 @@ namespace Bygdrift.Tools.CsvTool
             var newHeaders = new Dictionary<int, string>();
             var newColTypes = new Dictionary<int, Type>();
             var newRecords = new Dictionary<(int Row, int Col), object>();
+            var newColMaxLengths = new Dictionary<int, int>();
 
             int newCol = ColLimit.Min;
             for (int origCol = ColLimit.Min; origCol <= ColLimit.Max; origCol++)
@@ -343,6 +344,7 @@ namespace Bygdrift.Tools.CsvTool
                         newHeaders.Add(newCol, header);
 
                     newColTypes.Add(newCol, ColTypes[origCol]);
+                    newColMaxLengths.TryAdd(newCol, ColMaxLengths[origCol]);
                     for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
                         if (Records.TryGetValue((row, origCol), out object val))
                             newRecords.Add((row, newCol), val);
@@ -354,6 +356,7 @@ namespace Bygdrift.Tools.CsvTool
             Headers = newHeaders;
             ColTypes = newColTypes;
             Records = newRecords;
+            ColMaxLengths = newColMaxLengths;
             _colLimit.Min = newColTypes.Keys.Min();
             _colLimit.Max = newColTypes.Keys.Max();
         }
@@ -391,24 +394,39 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Remove a specific row
         /// </summary>
-        /// <param name="row">RowId</param>
-        public void RemoveRow(int row)
+        /// <param name="rowNumber">RowId</param>
+        /// <param name="lowerUpperCount">If true: If the csv has 3 rows and one is removed, then the upperlimit gets lowered to 2</param>
+        public void RemoveRow(int rowNumber, bool lowerUpperCount = true)
         {
             for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
-                Records.Remove((row, col));
+                Records.Remove((rowNumber, col));
 
-            if (Records.Any())
-            {
-                _rowLimit.Min = Records.Min(o => o.Key.Row);
-                _rowLimit.Max = Records.Max(o => o.Key.Row);
-            }
-            else
+            if (Records.Count == 0)
             {
                 _rowLimit.Min = null;
                 _rowLimit.Max = null;
+                return;
             }
+            if (lowerUpperCount)
+            {
+                var newRecords = new Dictionary<(int Row, int Col), object>();
+                for (int row = RowLimit.Min; row < RowLimit.Max; row++)
+                {
+                    for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
+                    {
+                        if (row < rowNumber)
+                            if (Records.ContainsKey((row, col)))
+                                newRecords.Add((row, col), GetRecord(row, col));
+                        else
+                            if (Records.ContainsKey((row+1, col)))
+                                newRecords.Add((row, col), GetRecord(row + 1, col));
+                    }
+                }
+                Records = newRecords;
+            }
+            _rowLimit.Min = Records.Min(o => o.Key.Row);
+            _rowLimit.Max = Records.Max(o => o.Key.Row);
         }
-
 
         /// <summary>
         /// Remove multiple rows
