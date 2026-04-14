@@ -2,6 +2,7 @@
 using SlapKit.Excel.Excel;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -579,6 +580,8 @@ namespace Bygdrift.Tools.CsvTool
             return Records.TryGetValue((row, col), out value);
         }
 
+        
+
         /// <summary>
         /// Try to get a record an return if it succeded or not
         /// </summary>
@@ -586,6 +589,25 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="col">colId</param>
         /// <param name="convertModelToJson">If value is a model, then it can be converted to json</param>
         /// <param name="value">The value will be available from here</param>
+        //public bool TryGetRecord(int row, int col, bool convertModelToJson, out object value)
+        //{
+        //    var succes = Records.TryGetValue((row, col), out value);
+        //    if (succes && convertModelToJson && value != null)
+        //    {
+        //        var type = value.GetType();
+        //        if (IsPocoModel(type))
+        //        {
+        //            // Safe to serialize POCOs
+        //            value = JsonConvert.SerializeObject(value, new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore });
+        //        }
+        //        else
+        //        {
+        //            // Convert third-party / non-POCO objects to string to avoid serialization errors
+        //            value = Convert.ToString(value, Config?.CultureInfo?.NumberFormat ?? CultureInfo.InvariantCulture);
+        //        }
+        //    }
+        //    return succes;
+        //}
         public bool TryGetRecord(int row, int col, bool convertModelToJson, out object value)
         {
             var succes = Records.TryGetValue((row, col), out value);
@@ -593,7 +615,8 @@ namespace Bygdrift.Tools.CsvTool
             {
                 var type = value.GetType();
                 if (type != typeof(string) && type.IsClass)
-                    value = JsonConvert.SerializeObject(value);
+                    value = JsonConvert.SerializeObject(value, new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore });
+                //value = JsonConvert.SerializeObject(value);
             }
             return succes;
         }

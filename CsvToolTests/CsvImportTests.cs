@@ -79,7 +79,7 @@ namespace CsvToolTests
             Assert.AreEqual(pane0Csv.RowLimit, (0, 0));
 
             var pane1Csv = new Csv().AddExcelFile(filePath, 1, 3, 1);
-            Assert.AreEqual(pane1Csv.ColLimit, (1, 3));
+            Assert.AreEqual(pane1Csv.ColLimit, (1, 4));
             Assert.AreEqual(pane1Csv.RowLimit, (1, 5));
 
             var pane2Csv = new Csv().AddExcelFile(filePath, 2, 3, 2);

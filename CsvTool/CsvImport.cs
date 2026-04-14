@@ -250,8 +250,11 @@ namespace Bygdrift.Tools.CsvTool
                             csvIn.AddRecord(csvRow, csvCol, val.GetNumber());
                         else if (val.IsText)
                             csvIn.AddRecord(csvRow, csvCol, val.GetText());
-                        //else if (val.IsDateTime)
-                        //    csvIn.AddRecord(csvRow, csvCol, valAsString);
+                        else if (val.IsDateTime)
+                        {
+                            csvIn.AddRecord(csvRow, csvCol, val.GetDateTime());
+                        }
+
                         else
                             csvIn.AddRecord(csvRow, csvCol, valAsString);
                         recordAdded = true;
