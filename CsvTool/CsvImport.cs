@@ -13,8 +13,7 @@ namespace Bygdrift.Tools.CsvTool
     public partial class Csv
     {
         private Regex csvSplit;
-        internal Regex CsvSplit { get { return csvSplit ??= new("(?<=^|,)(\"(?:[^\"]|\"\")*\"|[^,]*)", RegexOptions.Compiled); } }
-
+        internal Regex CsvSplit => field ??= new Regex("(?<=^|,)(\"(?:[^\"]|\"\")*\"|[^,]*)", RegexOptions.Compiled);
         private char delimiter = ',';
 
         /// <summary>
@@ -24,7 +23,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="createNewUniqueHeaderIfAlreadyExists">True: If fx value='Id' and exists, a new header will be made, called 'Id_2'. False: If fx value='Id' and exists, then the same id will be returned and no new header will be created</param>
         public Csv AddCsv(Csv csvIn, bool createNewUniqueHeaderIfAlreadyExists = false)
         {
-            if (csvIn == null || !csvIn.Records.Any())
+            if (csvIn == null || csvIn.Records.Count == 0)
                 return this;
 
             if (csvIn.Config == null && Config != null)
@@ -73,13 +72,12 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="delimiter"></param>
         /// <param name="take"></param>
         /// <returns></returns>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "<Pending>")]
         public Csv AddCsvStream(Stream stream, char delimiter = ',', int? take = null)
         {
             if (stream == null || stream.Length == 0)
                 return this;
 
-            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var thisIsEmpty = Records.Count == 0 && Headers.Count == 0;
             stream.Position = 0;
             using var reader = new StreamReader(stream, leaveOpen: true);
             if (delimiter != ',')
@@ -114,7 +112,7 @@ namespace Bygdrift.Tools.CsvTool
             if (dataTable == null || dataTable.Columns.Count == 0)
                 return this;
 
-            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var thisIsEmpty = Records.Count == 0 && Headers.Count == 0;
             var csvIn = new Csv(this.Config);
             for (int col = 1; col <= dataTable.Columns.Count; col++)
                 csvIn.AddHeader(col, dataTable.Columns[col - 1].ToString());
@@ -134,7 +132,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Imports Csv from a list.
         /// </summary>
-        public Csv AddModel<T>(IEnumerable<T> source) where T : class
+        public Csv AddModel<T>(IEnumerable<T> source)
         {
             var r = this.RowLimit.Max + 1;
             foreach (var item in source)
@@ -225,7 +223,7 @@ namespace Bygdrift.Tools.CsvTool
             if (ws == null)
                 return csvIn;
 
-            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var thisIsEmpty = Records.Count == 0 && Headers.Count == 0;
             var firstPossibleAddress = ws.Row(rowStart).Cell(colStart).Address;
             var lastPossibleAddress = ws.LastCellUsed()?.Address;
             if (lastPossibleAddress == null)
@@ -276,13 +274,12 @@ namespace Bygdrift.Tools.CsvTool
         /// </summary>
         /// <param name="list"></param>
         /// <returns>If list is empty, then an empty csv</returns>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "<Pending>")]
         public Csv AddExpandoObjects(IEnumerable<dynamic> list)
         {
             if (!list.Any())
                 return this;
 
-            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var thisIsEmpty = Records.Count == 0 && Headers.Count == 0;
             var csvIn = new Csv(this.Config);
             int col = 1;
             foreach (KeyValuePair<string, object> item in list.First())
@@ -292,7 +289,7 @@ namespace Bygdrift.Tools.CsvTool
             }
 
             int row = 1;
-            foreach (IDictionary<string, object> cols in list)
+            foreach (IDictionary<string, object> cols in list.Select(v => (IDictionary<string, object>)v))
             {
                 col = 1;
                 foreach (var value in cols.Values)
@@ -324,14 +321,14 @@ namespace Bygdrift.Tools.CsvTool
         /// <returns></returns>
         public Csv AddJson(JToken jToken, bool convertArraysToStrings)
         {
-            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var thisIsEmpty = Records.Count == 0 && Headers.Count == 0;
             var csvIn = new Csv(this.Config);
             var rowStart = csvIn.RowLimit.Max + jToken.Type == JTokenType.Array ? 0 : 1;
             FromJsonSub(jToken.Children(), rowStart, convertArraysToStrings, csvIn);
             return thisIsEmpty ? csvIn : this.AddCsv(csvIn);
         }
 
-        private void FromJsonSub(IEnumerable<JToken> jTokens, int row, bool convertArraysToStrings, Csv csvIn)
+        private static void FromJsonSub(IEnumerable<JToken> jTokens, int row, bool convertArraysToStrings, Csv csvIn)
         {
             foreach (JToken item in jTokens)
             {
@@ -361,7 +358,7 @@ namespace Bygdrift.Tools.CsvTool
             {
                 var end = path.IndexOf('.');
                 if (end != -1)
-                    path = path.Substring(end + 1);
+                    path = path[(end + 1)..];
             }
 
             return path;
@@ -375,7 +372,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <returns></returns>
         public Csv AddObject(object o, bool convertArraysToStrings)
         {
-            var thisIsEmpty = !Records.Any() && !Headers.Any();
+            var thisIsEmpty = Records.Count == 0 && Headers.Count == 0;
             var csvIn = new Csv(this.Config);
             var jToken = JToken.FromObject(o);
             var rowStart = jToken.Type == JTokenType.Array ? 0 : 1;

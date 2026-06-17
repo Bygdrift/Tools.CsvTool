@@ -26,10 +26,8 @@ namespace Bygdrift.Tools.CsvTool
         public Csv AddHeader(int col, string headerName)
         {
             headerName = UniqueHeader(headerName, false);
-            if (Headers.ContainsKey(col))
+            if (!Headers.TryAdd(col, headerName))
                 Headers[col] = headerName;
-            else
-                Headers.Add(col, headerName);
 
             if (ColTypes == null || !ColTypes.ContainsKey(col))
                 ColTypes.Add(col, null);  //Remember to tak care of those nulls that doesnt gets parsed to string, decimal, long and bool
@@ -40,9 +38,7 @@ namespace Bygdrift.Tools.CsvTool
             if (_colLimit.Max < col || _colLimit.Max == null)
                 _colLimit.Max = col;
 
-            if (!ColMaxLengths.ContainsKey(col))
-                ColMaxLengths.Add(col, 0);
-
+            ColMaxLengths.TryAdd(col, 0);
             return this;
         }
 
@@ -324,11 +320,25 @@ namespace Bygdrift.Tools.CsvTool
         /// <summary>
         /// Remove a specific column
         /// </summary>
+        /// <param name="header">the header name</param>
+        public Csv RemoveColumn(string header)
+        {
+            if (Headers.ContainsValue(header))
+            {
+                var col = Headers.FirstOrDefault(x => x.Value == header).Key;
+                return RemoveColumn(col);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Remove a specific column
+        /// </summary>
         /// <param name="col">the colId</param>
-        public void RemoveColumn(int col)
+        public Csv RemoveColumn(int col)
         {
             if (col < ColLimit.Min || col > ColLimit.Max)
-                return;
+                return this;
 
             var newHeaders = new Dictionary<int, string>();
             var newColTypes = new Dictionary<int, Type>();
@@ -359,6 +369,7 @@ namespace Bygdrift.Tools.CsvTool
             ColMaxLengths = newColMaxLengths;
             _colLimit.Min = newColTypes.Keys.Min();
             _colLimit.Max = newColTypes.Keys.Max();
+            return this;
         }
 
         /// <summary>
@@ -378,7 +389,7 @@ namespace Bygdrift.Tools.CsvTool
 
             if (hasChanges)
             {
-                if (Records.Any())
+                if (Records.Count != 0)
                 {
                     _rowLimit.Min = Records.Min(o => o.Key.Row);
                     _rowLimit.Max = Records.Max(o => o.Key.Row);
@@ -456,7 +467,7 @@ namespace Bygdrift.Tools.CsvTool
             }
 
             Records = newRecords;
-            if (Records.Any())
+            if (Records.Count != 0)
             {
                 _rowLimit.Min = Records.Min(o => o.Key.Row);
                 _rowLimit.Max = Records.Max(o => o.Key.Row);
@@ -480,7 +491,7 @@ namespace Bygdrift.Tools.CsvTool
             if (rowIds == null)
                 return 0;
 
-            RemoveRows(rowIds.ToArray());
+            RemoveRows([.. rowIds]);
             return rowIds.Length;
         }
 

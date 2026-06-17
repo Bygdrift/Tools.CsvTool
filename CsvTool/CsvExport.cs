@@ -58,7 +58,7 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
         public Csv ToCsvFile(string filePath, int? take = null)
         {
-            if (this == null || !Records.Any())
+            if (this == null || Records.Count == 0)
                 return this;
 
             var stream = ToCsvStream(false, take);
@@ -84,7 +84,7 @@ namespace Bygdrift.Tools.CsvTool
             //System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
 
             var stream = new MemoryStream();
-            if (this != null || !Records.Any())
+            if (this != null || Records.Count == 0)
             {
                 using var writer = new StreamWriter(stream, encoding: Encoding.UTF8, leaveOpen: true);
                 writer.WriteLine(WriteRow(null, addSpaces).StringBuilder);  //Header
@@ -128,9 +128,9 @@ namespace Bygdrift.Tools.CsvTool
             //Denne rammer alt fremover - skal kun være lokal.
             //System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
             var writer = new StringBuilder();
-            if (this != null || !Records.Any())
+            if (this != null || Records.Count == 0)
             {
-                writer.Append(WriteRow(null, addSpaces).StringBuilder).Append("\n");  //Header
+                writer.Append(WriteRow(null, addSpaces).StringBuilder).Append('\n');  //Header
                 for (int row = RowLimit.Min; row <= RowLimit.Max; row++)
                 {
                     if (take != null && row == take)
@@ -138,7 +138,7 @@ namespace Bygdrift.Tools.CsvTool
 
                     var res = WriteRow(row, addSpaces);
                     if (!res.IsEmpy)
-                        writer.Append(res.StringBuilder).Append("\n");
+                        writer.Append(res.StringBuilder).Append('\n');
                 }
             }
             return writer.ToString();
@@ -184,47 +184,21 @@ namespace Bygdrift.Tools.CsvTool
                     table.Rows.Add([.. entities]);
                 }
                 else
-                    table.Rows.Add(row.Value.Select(o => o.Value).ToArray());
+                    table.Rows.Add([.. row.Value.Select(o => o.Value)]);
 
             }
 
             return table;
         }
 
-
-        //Is removed. Instead use: new Csv().FromFile().ToDataTable()
-        //public DataTable ToDataTable(string csvFilePath)
-        //{
-        //    var dt = new DataTable();
-        //    using (var sr = new StreamReader(csvFilePath))
-        //    {
-        //        var headers = sr.ReadLine().Split(',');
-        //        foreach (string header in headers)
-        //            dt.Columns.Add(header);
-
-        //        while (!sr.EndOfStream)
-        //        {
-        //            var rows = sr.ReadLine().Split(',');
-        //            var dr = dt.NewRow();
-        //            for (int i = 0; i < headers.Length; i++)
-        //                dr[i] = rows[i];
-
-        //            dt.Rows.Add(dr);
-        //        }
-        //    }
-        //    return dt;
-        //}
-
-
         /// <summary>
         /// Export Excel to a stream
         /// </summary>
         /// <param name="paneName">The name of the worksheet</param>
         /// <param name="tableName">The name of the table inside Excel. If null, no fancy talbe will be added</param>
-        /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
-        public Stream ToExcelStream(string paneName = "Data", string tableName = null, int? take = null)
+        public Stream ToExcelStream(string paneName = "Data", string tableName = null)
         {
-            var workbook = ToExcelAsXlWokBook(paneName, tableName, take);
+            var workbook = ToExcelAsXlWokBook(paneName, tableName);
             var stream = new MemoryStream();
             workbook.SaveAs(stream);
             workbook.Dispose();
@@ -238,12 +212,42 @@ namespace Bygdrift.Tools.CsvTool
         /// <param name="filePath">Like c:\file.xlsx</param>
         /// <param name="paneName">The name of the worksheet</param>
         /// <param name="tableName">The name of the table inside Excel. If null, no fancy table will be added</param>
-        /// <param name="take">The amount of rows to export. If null, then all will be exported</param>
-        public Csv ToExcelFile(string filePath, string paneName = "Data", string tableName = null, int? take = null)
+        /// <param name="overwrite">If true, overwrites the file if it already exists</param>
+        public Csv ToExcelFile(string filePath, string paneName = "Data", string tableName = null, bool overwrite = false)
         {
-            var workbook = ToExcelAsXlWokBook(paneName, tableName, take);
-            workbook.SaveAs(filePath);
-            workbook.Dispose();
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be empty.", nameof(filePath));
+
+            filePath = filePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            var fullFilePath = Path.GetFullPath(filePath);
+            var directoryPath = Path.GetDirectoryName(fullFilePath);
+
+            if (string.IsNullOrWhiteSpace(directoryPath))
+                throw new IOException($"Could not resolve directory from file path: {filePath}");
+
+            Directory.CreateDirectory(directoryPath);
+
+            if (Directory.Exists(fullFilePath))
+            {
+                if (!overwrite)
+                    throw new IOException($"A directory already exists with the same name as the file: {fullFilePath}");
+
+                Directory.Delete(fullFilePath, recursive: true);
+            }
+
+            if (File.Exists(fullFilePath))
+            {
+                if (!overwrite)
+                    throw new IOException($"File already exists: {fullFilePath}");
+
+                File.Delete(fullFilePath);
+            }
+
+            using var workbook = ToExcelAsXlWokBook(paneName, tableName);
+
+            workbook.SaveAs(fullFilePath);
+
             return this;
         }
 
@@ -260,9 +264,7 @@ namespace Bygdrift.Tools.CsvTool
             var worksheet = workbook.Worksheets.FirstOrDefault(s => s.Name == paneName);
             var table = worksheet?.Tables.FirstOrDefault(s => s.Name == tableName);
 
-
-            if (worksheet == null)
-                worksheet = workbook.Worksheets.Add(paneName);
+            worksheet ??= workbook.Worksheets.Add(paneName);
 
             if (table != null)
             {
@@ -301,13 +303,13 @@ namespace Bygdrift.Tools.CsvTool
             return worksheet;
         }
 
-        private XLWorkbook ToExcelAsXlWokBook(string paneName, string tableName = null, int? take = null)
+        private XLWorkbook ToExcelAsXlWokBook(string paneName, string tableName = null)
         {
             //System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; // Ensures right decimal punctiation
             var workbook = new XLWorkbook();
             var worksheet = workbook.Worksheets.Add(paneName);
 
-            if (this != null && Records.Any())
+            if (this != null && Records.Count != 0)
             {
                 for (int col = ColLimit.Min; col <= ColLimit.Max; col++)
                     worksheet.Cell(1, col).Value = Headers[col];
@@ -420,7 +422,7 @@ namespace Bygdrift.Tools.CsvTool
             return res;
         }
 
-        private Dictionary<int, int> colMaxLengthsWithHeaders
+        private Dictionary<int, int> ColMaxLengthsWithHeaders
         {
             get
             {
@@ -502,11 +504,11 @@ namespace Bygdrift.Tools.CsvTool
                 if (addSpaces)
                     try  //Passing double can go from 21 to 24 when converted to string - ex: 0.0000001129498786607691 becomes 1,12949878660769E-07
                     {
-                        val += new string(' ', colMaxLengthsWithHeaders[col] - val.Length);
+                        val += new string(' ', ColMaxLengthsWithHeaders[col] - val.Length);
                     }
                     catch (Exception)
                     {
-                        val = val.Substring(0, colMaxLengthsWithHeaders[col]);
+                        val = val[..ColMaxLengthsWithHeaders[col]];
                     }
 
                 if (col < ColLimit.Max)

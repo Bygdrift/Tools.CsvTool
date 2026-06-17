@@ -16,12 +16,30 @@ namespace Bygdrift.Tools.CsvTool
             var res = new Csv();
             res.AddHeaders(Headers);
 
-            var row = 1;
-            foreach (var lookupValue in values.Distinct())
-                foreach (var recordRows in GetRowsRecords(headerName, ignoreCase, lookupValue))
-                    res.AddRow(row++, recordRows.Value);
+            var row = res.RowLimit.Min;
+
+            foreach (var value in values.Distinct())
+            {
+                foreach (var recordRow in GetRowsRecords(headerName, ignoreCase, value))
+                    res.AddRow(row++, recordRow.Value);
+            }
 
             return res;
         }
+
+        //public Csv FilterRows(string headerName, bool ignoreCase, params object[] values)
+        //{
+        //    var res = new Csv();
+        //    res.AddHeaders(Headers);
+
+        //    var row = 1;
+        //    foreach (var lookupValue in values.Distinct())
+        //        foreach (var recordRows in GetRowsRecords(headerName, ignoreCase, lookupValue))
+        //            res.AddRow(row++, recordRows.Value);
+
+        //    return res;
+        //}
+
+
     }
 }
